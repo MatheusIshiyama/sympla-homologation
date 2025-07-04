@@ -1,0 +1,12 @@
+model Ticket {
+  id        String   @id @default(cuid())
+  name      String
+  price     String
+  order_id   String   
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  order Order @relation(fields: [order_id], references: [id])
+
+  @@map("Tickets")
+}

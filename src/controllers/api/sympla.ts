@@ -3,12 +3,12 @@ import dateFns from 'date-fns';
 import { SymplaApiClient } from '@/services/api';
 import { logger, parseDate } from '@/utils';
 
-import type { Order, OrderResponse, Ticket, TicketCheckin, TicketResponse } from '@/types';
+import type { SymplaOrder, SymplaOrderResponse, SymplaTicket, SymplaTicketCheckin, SymplaTicketResponse } from '@/types';
 
 export class SymplaController {
   private symplaClient: SymplaApiClient;
   private lastUpdateDate: Record<string, Date | null> = {};
-  private validatedTickets: Record<string, Ticket[]> = {};
+  private validatedTickets: Record<string, SymplaTicket[]> = {};
 
   constructor() {
     this.symplaClient = new SymplaApiClient();
@@ -22,17 +22,17 @@ export class SymplaController {
     this.lastUpdateDate[eventId] = date;
   }
 
-  getValidatedTicketsByEventId(eventId: string): Ticket[] {
+  getValidatedTicketsByEventId(eventId: string): SymplaTicket[] {
     return this.validatedTickets[eventId] || [];
   }
 
-  setValidatedTicketsByEventId(eventId: string, tickets: Ticket[]): void {
+  setValidatedTicketsByEventId(eventId: string, tickets: SymplaTicket[]): void {
     this.validatedTickets[eventId] = tickets;
   }
 
-  async getOrdersByEventId(eventId: string, page: number = 1): Promise<OrderResponse> {
+  async getOrdersByEventId(eventId: string, page: number = 1): Promise<SymplaOrderResponse> {
     try {
-      const orders: OrderResponse = await this.symplaClient.getOrders(eventId, page);
+      const orders: SymplaOrderResponse = await this.symplaClient.getOrders(eventId, page);
 
       return orders;
     } catch (error) {
@@ -41,9 +41,9 @@ export class SymplaController {
     }
   }
 
-  async getOrderParticipants(eventId: string, orderId: string): Promise<TicketResponse> {
+  async getOrderParticipants(eventId: string, orderId: string): Promise<SymplaTicketResponse> {
     try {
-      const participants: TicketResponse = await this.symplaClient.getOrderParticipants(eventId, orderId);
+      const participants: SymplaTicketResponse = await this.symplaClient.getOrderParticipants(eventId, orderId);
 
       return participants;
     } catch (error) {
@@ -52,23 +52,23 @@ export class SymplaController {
     }
   }
 
-  async getTicketsFromOrder(eventId: string, orderId: string): Promise<Ticket[]> {
+  async getTicketsFromOrder(eventId: string, orderId: string): Promise<SymplaTicket[]> {
     const { data: participants } = await this.getOrderParticipants(eventId, orderId);
 
     return participants.map(
-      (participant: Ticket): Ticket => ({
+      (participant: SymplaTicket): SymplaTicket => ({
         order_id: participant.order_id,
         order_status: participant.order_status,
         ticket_num_qr_code: participant.ticket_num_qr_code,
-        checkin: participant.checkin as TicketCheckin,
+        checkin: participant.checkin as SymplaTicketCheckin,
       }),
     );
   }
 
-  async fetchAllOrdersFromEvent(eventId: string, prevResults: Order[] = [], page: number = 1): Promise<Order[]> {
+  async fetchAllOrdersFromEvent(eventId: string, prevResults: SymplaOrder[] = [], page: number = 1): Promise<SymplaOrder[]> {
     try {
-      const response: OrderResponse = await this.symplaClient.getOrders(eventId, page);
-      const results: Order[] = [...prevResults, ...response.data];
+      const response: SymplaOrderResponse = await this.symplaClient.getOrders(eventId, page);
+      const results: SymplaOrder[] = [...prevResults, ...response.data];
       const hasNextPage: boolean = response.pagination.has_next;
 
       return hasNextPage ? this.fetchAllOrdersFromEvent(eventId, results, page + 1) : results;
@@ -78,17 +78,17 @@ export class SymplaController {
     }
   }
 
-  filterOrdersByLastUpdateDate(orders: Order[]): Date {
-    const updateDates: Date[] = orders.map((order: Order) => parseDate(order.updated_date));
+  filterOrdersByLastUpdateDate(orders: SymplaOrder[]): Date {
+    const updateDates: Date[] = orders.map((order: SymplaOrder) => parseDate(order.updated_date));
 
     return dateFns.max(updateDates);
   }
 
-  async getUpdatedOrdersByEventId(eventId: string): Promise<Order[]> {
+  async getUpdatedOrdersByEventId(eventId: string): Promise<SymplaOrder[]> {
     try {
-      const orders: Order[] = await this.fetchAllOrdersFromEvent(eventId);
+      const orders: SymplaOrder[] = await this.fetchAllOrdersFromEvent(eventId);
 
-      return orders.filter((order: Order) =>
+      return orders.filter((order: SymplaOrder) =>
         dateFns.isAfter(parseDate(order.updated_date), this.lastUpdateDate[eventId] || new Date('1970-01-01T00:00:00.000Z')),
       );
     } catch (error) {

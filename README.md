@@ -9,12 +9,14 @@ A Node.js API service for managing and synchronizing event data with the Sympla 
 - **Event Management**: Track event-specific data and updates
 - **TypeScript Support**: Full TypeScript implementation with strict typing
 - **Scheduled Jobs**: Automated background tasks using node-cron
+- **Database Integration**: PostgreSQL database with Prisma ORM
 
 ## 📋 Prerequisites
 
 - Node.js (v18 or higher)
 - pnpm (recommended) or npm
 - TypeScript
+- PostgreSQL database
 
 ## 🛠️ Installation
 
@@ -35,7 +37,21 @@ pnpm install
 
 ```env
 PORT=3000
+DATABASE_URL="postgresql://username:password@localhost:5432/sympla_homologation"
 # Add other required environment variables for Sympla API integration
+```
+
+4. Set up the database:
+
+```bash
+# Generate Prisma client
+pnpm db:generate
+
+# Push the schema to your database
+pnpm db:push
+
+# Or run migrations (if you prefer migrations)
+pnpm db:migrate
 ```
 
 ## 🚀 Usage
@@ -56,6 +72,22 @@ pnpm build
 
 # Start the production server
 pnpm start
+```
+
+### Database Management
+
+```bash
+# Generate Prisma client
+pnpm db:generate
+
+# Push schema changes to database
+pnpm db:push
+
+# Run migrations
+pnpm db:migrate
+
+# Open Prisma Studio (database GUI)
+pnpm db:studio
 ```
 
 ### Linting
@@ -91,11 +123,36 @@ src/
 ├── config/          # Configuration files
 ├── controllers/     # API controllers
 ├── jobs/           # Background jobs and scheduled tasks
+├── lib/            # Library files (Prisma client)
 ├── routes/         # Express routes
 ├── services/       # External service integrations
 ├── types/          # TypeScript type definitions
 └── utils/          # Utility functions
+prisma/
+├── schema.prisma   # Database schema
+└── migrations/     # Database migrations
 ```
+
+## 🗄️ Database Schema
+
+The application uses PostgreSQL with the following main models:
+
+### Event
+
+- Stores event information from Sympla
+- Tracks event status, dates, and location
+- Related to multiple orders
+
+### Order
+
+- Stores order data from Sympla
+- Contains customer information and ticket details
+- Linked to events
+
+### IntegrationLog
+
+- Tracks integration activities and errors
+- Stores webhook data and sync logs
 
 ## 🔄 Background Jobs
 
@@ -149,6 +206,7 @@ Create a `.env` file with the following variables:
 
 ```env
 PORT=3000
+DATABASE_URL="postgresql://username:password@localhost:5432/sympla_homologation"
 # Add Sympla API credentials and other configuration
 ```
 

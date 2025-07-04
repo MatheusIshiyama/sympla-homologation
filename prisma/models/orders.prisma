@@ -1,0 +1,18 @@
+model Order {
+  id            String   @id @default(cuid())
+  sympla_id     String   @unique 
+  event_id      String   
+  customer_name String
+  customer_email String
+  ticket_type   String
+  quantity      Int
+  total_amount  Int
+  status        String   @default("pending")
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  event  Event    @relation(fields: [event_id], references: [id])
+  tickets Ticket[]
+
+  @@map("Orders")
+}

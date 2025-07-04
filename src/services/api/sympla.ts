@@ -1,6 +1,6 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios';
 
-import type { OrderResponse, TicketResponse } from '@/types';
+import type { SymplaOrderResponse, SymplaTicketResponse } from '@/types';
 
 const baseURL: string = 'https://api.sympla.com.br/public/v3';
 const apiKey: string = process.env.SYMPLA_API_KEY || '';
@@ -31,7 +31,7 @@ export class SymplaApiClient {
     }
   }
 
-  async getOrders(eventId: string, page: number = 1): Promise<OrderResponse> {
+  async getOrders(eventId: string, page: number = 1): Promise<SymplaOrderResponse> {
     const params: Record<string, unknown> = {
       page,
       page_size: 20,
@@ -40,10 +40,10 @@ export class SymplaApiClient {
       status: true,
     };
 
-    return this.makeRequest<OrderResponse>(`/events/${eventId}/orders`, { params });
+    return this.makeRequest<SymplaOrderResponse>(`/events/${eventId}/orders`, { params });
   }
 
-  async getOrderParticipants(eventId: string, orderId: string): Promise<TicketResponse> {
-    return this.makeRequest<TicketResponse>(`/events/${eventId}/orders/${orderId}/participants`);
+  async getOrderParticipants(eventId: string, orderId: string): Promise<SymplaTicketResponse> {
+    return this.makeRequest<SymplaTicketResponse>(`/events/${eventId}/orders/${orderId}/participants`);
   }
 }

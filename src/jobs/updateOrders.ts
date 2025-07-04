@@ -1,25 +1,25 @@
 import { symplaController } from '@/controllers/api';
 import { logger } from '@/utils';
 
-import type { Order, Ticket } from '@/types';
+import type { SymplaOrder, SymplaTicket } from '@/types';
 
 export const updateOrders: (eventId: string) => Promise<void> = async (eventId: string): Promise<void> => {
   try {
     logger('INFO', 'JOBS - UPDATE ORDERS', `Updating orders for eventId: ${eventId}`);
 
-    const updatedOrders: Order[] = await symplaController.getUpdatedOrdersByEventId(eventId);
+    const updatedOrders: SymplaOrder[] = await symplaController.getUpdatedOrdersByEventId(eventId);
 
-    const updatedOrdersIds: string[] = updatedOrders.map((order: Order) => order.id);
-    const validatedTickets: Ticket[] = symplaController.getValidatedTicketsByEventId(eventId);
-    const validatedTicketsWithoutUpdatedOrders: Ticket[] = validatedTickets.filter(
-      (ticket: Ticket) => !updatedOrdersIds.includes(ticket.order_id),
+    const updatedOrdersIds: string[] = updatedOrders.map((order: SymplaOrder) => order.id);
+    const validatedTickets: SymplaTicket[] = symplaController.getValidatedTicketsByEventId(eventId);
+    const validatedTicketsWithoutUpdatedOrders: SymplaTicket[] = validatedTickets.filter(
+      (ticket: SymplaTicket) => !updatedOrdersIds.includes(ticket.order_id),
     );
     // Essa é a lista de tickets que não foi afetada pela última atualização
 
     const validUpdatedOrdersIds: string[] = updatedOrders
-      .filter((order: Order) => order.order_status === 'A')
-      .map((order: Order) => order.id);
-    const newValidatedTickets: Ticket[][] = await Promise.all(
+      .filter((order: SymplaOrder) => order.order_status === 'A')
+      .map((order: SymplaOrder) => order.id);
+    const newValidatedTickets: SymplaTicket[][] = await Promise.all(
       validUpdatedOrdersIds.map((updatedOrderId: string) => symplaController.getTicketsFromOrder(eventId, updatedOrderId)),
     );
     // Essa é a lista dos tickets de novos orders *válidos*
@@ -27,8 +27,8 @@ export const updateOrders: (eventId: string) => Promise<void> = async (eventId: 
 
     const data: {
       newUpdatedDate: Date | null;
-      newValidatedTickets: Ticket[];
-      validTickets: Ticket[];
+      newValidatedTickets: SymplaTicket[];
+      validTickets: SymplaTicket[];
     } = {
       newUpdatedDate: updatedOrders.length
         ? symplaController.filterOrdersByLastUpdateDate(updatedOrders)
