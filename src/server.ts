@@ -1,6 +1,6 @@
 import express, { type Application } from 'express';
 
-import { router } from '@/routes';
+import { getRoutes } from '@/routes';
 import { logger } from '@/utils';
 
 export class Server {
@@ -15,8 +15,8 @@ export class Server {
   }
 
   private setup(): void {
-    this.app.use(router);
     this.app.use(express.json());
+    this.app.use(getRoutes());
   }
 
   public start(): void {

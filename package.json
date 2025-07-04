@@ -12,7 +12,11 @@
   "author": "Matheus Ishiyama <matheus.ishiyama@outlook.com>",
   "license": "MIT",
   "dependencies": {
-    "express": "^5.1.0"
+    "axios": "^1.10.0",
+    "date-fns": "^4.1.0",
+    "dotenv": "^17.0.1",
+    "express": "^5.1.0",
+    "node-cron": "^4.2.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.1",
