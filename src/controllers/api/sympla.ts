@@ -1,33 +1,20 @@
 import dateFns from 'date-fns';
 
+import { prisma } from '@/database/prisma';
 import { SymplaApiClient } from '@/services/api';
+import { eventService } from '@/services/eventService';
+import { orderService } from '@/services/orderService';
+import { participantService } from '@/services/participantService';
 import { logger, parseDate } from '@/utils';
 
-import type { SymplaOrder, SymplaOrderResponse, SymplaTicket, SymplaTicketCheckin, SymplaTicketResponse } from '@/types';
+import type { SymplaOrder, SymplaOrderResponse, SymplaParticipant, SymplaParticipantCheckin, SymplaParticipantResponse } from '@/types';
+import type { Event, Order, Participant, Prisma } from '@prisma/client';
 
 export class SymplaController {
   private symplaClient: SymplaApiClient;
-  private lastUpdateDate: Record<string, Date | null> = {};
-  private validatedTickets: Record<string, SymplaTicket[]> = {};
 
   constructor() {
     this.symplaClient = new SymplaApiClient();
-  }
-
-  getLastUpdateDateByEventId(eventId: string): Date | null {
-    return this.lastUpdateDate[eventId] || null;
-  }
-
-  setLastUpdateDateByEventId(eventId: string, date: Date): void {
-    this.lastUpdateDate[eventId] = date;
-  }
-
-  getValidatedTicketsByEventId(eventId: string): SymplaTicket[] {
-    return this.validatedTickets[eventId] || [];
-  }
-
-  setValidatedTicketsByEventId(eventId: string, tickets: SymplaTicket[]): void {
-    this.validatedTickets[eventId] = tickets;
   }
 
   async getOrdersByEventId(eventId: string, page: number = 1): Promise<SymplaOrderResponse> {
@@ -41,9 +28,9 @@ export class SymplaController {
     }
   }
 
-  async getOrderParticipants(eventId: string, orderId: string): Promise<SymplaTicketResponse> {
+  async getOrderParticipants(eventId: string, orderId: string): Promise<SymplaParticipantResponse> {
     try {
-      const participants: SymplaTicketResponse = await this.symplaClient.getOrderParticipants(eventId, orderId);
+      const participants: SymplaParticipantResponse = await this.symplaClient.getOrderParticipants(eventId, orderId);
 
       return participants;
     } catch (error) {
@@ -52,15 +39,17 @@ export class SymplaController {
     }
   }
 
-  async getTicketsFromOrder(eventId: string, orderId: string): Promise<SymplaTicket[]> {
+  async getParticipantsFromOrder(eventId: string, orderId: string): Promise<SymplaParticipant[]> {
     const { data: participants } = await this.getOrderParticipants(eventId, orderId);
 
     return participants.map(
-      (participant: SymplaTicket): SymplaTicket => ({
+      (participant: SymplaParticipant): SymplaParticipant => ({
+        id: participant.id,
+        sympla_participant_id: participant.id,
         order_id: participant.order_id,
         order_status: participant.order_status,
         ticket_num_qr_code: participant.ticket_num_qr_code,
-        checkin: participant.checkin as SymplaTicketCheckin,
+        checkin: participant.checkin as SymplaParticipantCheckin,
       }),
     );
   }
@@ -84,17 +73,65 @@ export class SymplaController {
     return dateFns.max(updateDates);
   }
 
-  async getUpdatedOrdersByEventId(eventId: string): Promise<SymplaOrder[]> {
+  async getNewOrdersByEvent(event: Event): Promise<SymplaOrder[]> {
     try {
-      const orders: SymplaOrder[] = await this.fetchAllOrdersFromEvent(eventId);
+      const orders: SymplaOrder[] = await this.fetchAllOrdersFromEvent(event.sympla_event_id);
 
-      return orders.filter((order: SymplaOrder) =>
-        dateFns.isAfter(parseDate(order.updated_date), this.lastUpdateDate[eventId] || new Date('1970-01-01T00:00:00.000Z')),
-      );
+      return orders.filter((order: SymplaOrder) => dateFns.isAfter(parseDate(order.updated_date), event.last_update_date));
     } catch (error) {
-      logger('ERROR', 'SYMPLA - GET UPDATED ORDERS BY EVENT ID', `Error getting updated orders by eventId: ${eventId} - ${error}`);
+      logger('ERROR', 'SYMPLA - GET UPDATED ORDERS BY EVENT ID', `Error getting updated orders by eventId: ${event.id} - ${error}`);
 
       return [];
+    }
+  }
+
+  async updateOrders(event: Event, orders: SymplaOrder[]): Promise<void> {
+    try {
+      await prisma.$transaction(
+        async (tx: Prisma.TransactionClient): Promise<void> => {
+          const updateOrderPromises: Promise<Order>[] = orders.map(async (order: SymplaOrder) => {
+            const participants: SymplaParticipant[] = await this.getParticipantsFromOrder(event.sympla_event_id, order.id);
+
+            const newOrder: Order = await orderService.createOrUpdateOrderBySymplaId(
+              order.sympla_order_id,
+              {
+                sympla_order_id: order.sympla_order_id,
+                event: { connect: { id: event.id } },
+              },
+              tx,
+            );
+
+            const updateParticipantPromises: Promise<Participant>[] = participants.map(async (participant: SymplaParticipant) => {
+              const participantData: Prisma.ParticipantCreateInput = {
+                sympla_participant_id: String(participant.id),
+                number: participant.ticket_num_qr_code,
+                qr_code: participant.ticket_num_qr_code,
+                checked_in: participant.checkin.check_in,
+                order: { connect: { id: newOrder.id } },
+              };
+
+              return participantService.createOrUpdateParticipantBySymplaId(String(participant.id), participantData, tx);
+            });
+
+            await Promise.all(updateParticipantPromises);
+
+            return newOrder;
+          });
+
+          await Promise.all(updateOrderPromises);
+
+          const lastUpdateDate: Date = this.filterOrdersByLastUpdateDate(orders);
+
+          await eventService.updateEvent(event.id, { last_update_date: lastUpdateDate }, tx);
+        },
+        {
+          timeout: 30000,
+          maxWait: 10000, // 10 seconds max wait for transaction to start
+        },
+      );
+    } catch (error) {
+      logger('ERROR', 'SYMPLA - UPDATE ORDERS', `Error updating orders for eventId: ${event.id}`);
+      throw error;
     }
   }
 }

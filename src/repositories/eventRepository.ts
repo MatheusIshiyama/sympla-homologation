@@ -1,16 +1,18 @@
-import { prisma } from '@/database/prisma';
+import { BaseRepository } from '@/repositories/baseRepository';
 
-import type { Event } from '@prisma/client';
+import type { Event, Prisma } from '@prisma/client';
+import type { DefaultArgs } from '@prisma/client/runtime/library';
 
-export class EventRepository {
-  async getAllEvents(): Promise<Event[]> {
-    return prisma.event.findMany({
+export class EventRepository extends BaseRepository {
+  async getAllEvents(findManyArgs: Prisma.EventFindManyArgs<DefaultArgs>, tx?: Prisma.TransactionClient): Promise<Event[]> {
+    return this.getPrismaClient(tx).event.findMany({
       orderBy: { created_at: 'desc' },
+      ...findManyArgs,
     });
   }
 
-  async getEventById(id: string): Promise<Event | null> {
-    return prisma.event.findUnique({
+  async getEventById(id: string, tx?: Prisma.TransactionClient): Promise<Event | null> {
+    return this.getPrismaClient(tx).event.findUnique({
       where: { id },
       include: {
         orders: {
@@ -20,15 +22,44 @@ export class EventRepository {
     });
   }
 
-  async getEventBySymplaId(symplaId: string): Promise<Event | null> {
-    return prisma.event.findUnique({
-      where: { sympla_id: symplaId },
+  async getEventBySymplaId(symplaId: string, tx?: Prisma.TransactionClient): Promise<Event | null> {
+    return this.getPrismaClient(tx).event.findUnique({
+      where: { sympla_event_id: symplaId },
       include: {
         orders: {
           orderBy: { created_at: 'desc' },
         },
       },
     });
+  }
+
+  async createEvent(data: Prisma.EventCreateInput, tx?: Prisma.TransactionClient): Promise<Event> {
+    return this.getPrismaClient(tx).event.create({
+      data,
+    });
+  }
+
+  async updateEvent(eventId: string, data: Prisma.EventUpdateInput, tx?: Prisma.TransactionClient): Promise<Event> {
+    return this.getPrismaClient(tx).event.update({
+      where: { id: eventId },
+      data,
+    });
+  }
+
+  async createOrUpdateEvent(id: string, data: Prisma.EventCreateInput, tx?: Prisma.TransactionClient): Promise<Event> {
+    const eventExists: Event | null = await this.getEventById(id, tx);
+
+    if (eventExists) return this.updateEvent(eventExists.id, data, tx);
+
+    return this.createEvent(data, tx);
+  }
+
+  async createOrUpdateEventBySymplaId(symplaId: string, data: Prisma.EventCreateInput, tx?: Prisma.TransactionClient): Promise<Event> {
+    const eventExists: Event | null = await this.getEventBySymplaId(symplaId, tx);
+
+    if (eventExists) return this.updateEvent(eventExists.id, data, tx);
+
+    return this.createEvent(data, tx);
   }
 }
 

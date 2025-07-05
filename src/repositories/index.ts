@@ -1,3 +1,4 @@
+export * from '@/repositories/baseRepository';
 export * from '@/repositories/eventRepository';
 export * from '@/repositories/orderRepository';
-export * from '@/repositories/ticketRepository';
+export * from '@/repositories/participantRepository';

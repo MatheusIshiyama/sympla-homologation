@@ -1,6 +1,7 @@
 export interface SymplaOrder {
   id: string;
   event_id: string;
+  sympla_order_id: string;
   order_date: string;
   order_status: string;
   transaction_type: string;
@@ -14,20 +15,22 @@ export interface SymplaOrderResponse {
   pagination: { has_next: boolean; has_previous: boolean; next_page: number; previous_page: number };
 }
 
-export interface SymplaTicket {
-  order_id: string;
+export interface SymplaParticipant {
+  id: string | number;
+  sympla_participant_id: string | number;
+  order_id: string | number;
   order_status: string;
   ticket_num_qr_code: string;
-  checkin: SymplaTicketCheckin;
+  checkin: SymplaParticipantCheckin;
 }
 
-export interface SymplaTicketCheckin {
+export interface SymplaParticipantCheckin {
   checkin_id: number;
   check_in: boolean;
   check_in_date: string | null;
 }
 
-export interface SymplaTicketResponse {
-  data: SymplaTicket[];
+export interface SymplaParticipantResponse {
+  data: SymplaParticipant[];
   pagination: { has_next: boolean; has_previous: boolean; next_page: number; previous_page: number };
 }

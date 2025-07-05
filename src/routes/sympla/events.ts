@@ -1,18 +1,19 @@
 import { Router, type Request, type Response } from 'express';
 
-import { symplaController } from '@/controllers/api/sympla';
+import { eventService } from '@/services/eventService';
 
-import type { SymplaTicket } from '@/types';
+import type { Event } from '@prisma/client';
 
 const router: Router = Router();
 
-router.get('/:eventId', async (req: Request, res: Response) => {
+router.get('/:eventId', async (req: Request, res: Response): Promise<any> => {
   const { eventId } = req.params;
 
-  const lastUpdateDate: Date | null = symplaController.getLastUpdateDateByEventId(eventId as string);
-  const validatedTickets: SymplaTicket[] = symplaController.getValidatedTicketsByEventId(eventId as string);
+  const event: Event | null = await eventService.getEventById(eventId);
 
-  res.json({ status: 'ok', lastUpdateDate, validatedTickets });
+  if (!event) return res.status(404).json({ status: 'error', message: 'Event not found' });
+
+  return res.json({ status: 'ok' });
 });
 
 export default router;

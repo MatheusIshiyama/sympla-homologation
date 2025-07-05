@@ -1,46 +1,38 @@
 import { symplaController } from '@/controllers/api';
+import { eventService } from '@/services';
 import { logger } from '@/utils';
 
-import type { SymplaOrder, SymplaTicket } from '@/types';
+import type { SymplaOrder } from '@/types';
+import type { Event } from '@prisma/client';
+
+// ? Return just the orders that are valid (status "A")
+const getValidNewOrdersIds: (newOrders: SymplaOrder[]) => string[] = (newOrders: SymplaOrder[]): string[] => {
+  return newOrders.filter((order: SymplaOrder) => order.order_status === 'A').map((order: SymplaOrder) => String(order.id));
+};
+
+// ? Filter orders to update
+const filterOrdersToUpdate: (newOrders: SymplaOrder[], validNewOrdersIds: string[]) => SymplaOrder[] = (
+  newOrders: SymplaOrder[],
+  validNewOrdersIds: string[],
+): SymplaOrder[] => {
+  return newOrders
+    .filter((order: SymplaOrder) => validNewOrdersIds.includes(String(order.id)))
+    .map((order: SymplaOrder) => ({ ...order, sympla_order_id: order.id }));
+};
 
 export const updateOrders: (eventId: string) => Promise<void> = async (eventId: string): Promise<void> => {
   try {
-    logger('INFO', 'JOBS - UPDATE ORDERS', `Updating orders for eventId: ${eventId}`);
+    const event: Event | null = await eventService.getEventById(eventId);
 
-    const updatedOrders: SymplaOrder[] = await symplaController.getUpdatedOrdersByEventId(eventId);
+    if (!event) throw new Error(`Event not found for eventId: ${eventId}`);
 
-    const updatedOrdersIds: string[] = updatedOrders.map((order: SymplaOrder) => order.id);
-    const validatedTickets: SymplaTicket[] = symplaController.getValidatedTicketsByEventId(eventId);
-    const validatedTicketsWithoutUpdatedOrders: SymplaTicket[] = validatedTickets.filter(
-      (ticket: SymplaTicket) => !updatedOrdersIds.includes(ticket.order_id),
-    );
-    // Essa é a lista de tickets que não foi afetada pela última atualização
+    const newOrders: SymplaOrder[] = await symplaController.getNewOrdersByEvent(event);
 
-    const validUpdatedOrdersIds: string[] = updatedOrders
-      .filter((order: SymplaOrder) => order.order_status === 'A')
-      .map((order: SymplaOrder) => order.id);
-    const newValidatedTickets: SymplaTicket[][] = await Promise.all(
-      validUpdatedOrdersIds.map((updatedOrderId: string) => symplaController.getTicketsFromOrder(eventId, updatedOrderId)),
-    );
-    // Essa é a lista dos tickets de novos orders *válidos*
-    // Ou seja, se uma order passou de válida para cancelada, os tickets relacionados a ela não serão recuperados
+    const validNewOrdersIds: string[] = getValidNewOrdersIds(newOrders);
 
-    const data: {
-      newUpdatedDate: Date | null;
-      newValidatedTickets: SymplaTicket[];
-      validTickets: SymplaTicket[];
-    } = {
-      newUpdatedDate: updatedOrders.length
-        ? symplaController.filterOrdersByLastUpdateDate(updatedOrders)
-        : symplaController.getLastUpdateDateByEventId(eventId),
-      newValidatedTickets: newValidatedTickets.flat(),
-      validTickets: [...newValidatedTickets.flat(), ...validatedTicketsWithoutUpdatedOrders],
-    };
+    const ordersToUpdate: SymplaOrder[] = filterOrdersToUpdate(newOrders, validNewOrdersIds);
 
-    symplaController.setLastUpdateDateByEventId(eventId, data.newUpdatedDate || new Date('1970-01-01T00:00:00.000Z'));
-    symplaController.setValidatedTicketsByEventId(eventId, data.validTickets);
-
-    return logger('INFO', 'JOBS - UPDATE ORDERS', `Updated orders for eventId: ${eventId}`);
+    if (ordersToUpdate.length) await symplaController.updateOrders(event, ordersToUpdate);
   } catch (error) {
     logger('ERROR', 'JOBS - UPDATE ORDERS', `Error updating orders for eventId: ${eventId} - ${error}`);
     throw error;

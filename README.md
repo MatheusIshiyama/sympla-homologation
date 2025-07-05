@@ -1,11 +1,11 @@
 # Sympla Homologation
 
-A Node.js API service for managing and synchronizing event data with the Sympla platform. This service provides real-time order updates, ticket validation, and event management capabilities.
+A Node.js API service for managing and synchronizing event data with the Sympla platform. This service provides real-time order updates, participant validation, and event management capabilities.
 
 ## 🚀 Features
 
-- **Real-time Order Synchronization**: Automatically syncs order updates from Sympla every 10 seconds
-- **Ticket Validation**: Manages and validates tickets for events
+- **Real-time Order Synchronization**: Automatically syncs order updates from Sympla every 20 seconds
+- **Participant Management**: Manages and validates participants (tickets) for events
 - **Event Management**: Track event-specific data and updates
 - **TypeScript Support**: Full TypeScript implementation with strict typing
 - **Scheduled Jobs**: Automated background tasks using node-cron
@@ -38,6 +38,7 @@ pnpm install
 ```env
 PORT=3000
 DATABASE_URL="postgresql://username:password@localhost:5432/sympla_homologation"
+DIRECT_URL="postgresql://username:password@localhost:5432/sympla_homologation"
 # Add other required environment variables for Sympla API integration
 ```
 
@@ -45,13 +46,13 @@ DATABASE_URL="postgresql://username:password@localhost:5432/sympla_homologation"
 
 ```bash
 # Generate Prisma client
-pnpm db:generate
+pnpm prisma:generate
 
 # Push the schema to your database
-pnpm db:push
+pnpm prisma:migrate
 
 # Or run migrations (if you prefer migrations)
-pnpm db:migrate
+pnpm prisma:migrate
 ```
 
 ## 🚀 Usage
@@ -78,16 +79,13 @@ pnpm start
 
 ```bash
 # Generate Prisma client
-pnpm db:generate
-
-# Push schema changes to database
-pnpm db:push
+pnpm prisma:generate
 
 # Run migrations
-pnpm db:migrate
+pnpm prisma:migrate
 
 # Open Prisma Studio (database GUI)
-pnpm db:studio
+pnpm prisma:studio
 ```
 
 ### Linting
@@ -104,7 +102,7 @@ pnpm lint
 
 ### Sympla Events
 
-- **GET** `/sympla/events/:eventId` - Get event data including last update date and validated tickets
+- **GET** `/sympla/events/:eventId` - Get event data
 
 ### Example Requests
 
@@ -122,15 +120,17 @@ curl http://localhost:3000/sympla/events/3024800
 src/
 ├── config/          # Configuration files
 ├── controllers/     # API controllers
+├── database/        # Database connection (Prisma)
 ├── jobs/           # Background jobs and scheduled tasks
-├── lib/            # Library files (Prisma client)
+├── repositories/   # Data access layer
 ├── routes/         # Express routes
-├── services/       # External service integrations
+├── services/       # Business logic and external service integrations
 ├── types/          # TypeScript type definitions
 └── utils/          # Utility functions
 prisma/
-├── schema.prisma   # Database schema
-└── migrations/     # Database migrations
+├── models/         # Database model definitions
+├── migrations/     # Database migrations
+└── schema.prisma   # Main database schema
 ```
 
 ## 🗄️ Database Schema
@@ -142,53 +142,72 @@ The application uses PostgreSQL with the following main models:
 - Stores event information from Sympla
 - Tracks event status, dates, and location
 - Related to multiple orders
+- Includes `last_update_date` for synchronization tracking
 
 ### Order
 
 - Stores order data from Sympla
-- Contains customer information and ticket details
-- Linked to events
+- Contains order status and transaction information
+- Linked to events and participants
+- Supports multiple order statuses (APPROVED, CANCELLED, PENDING, etc.)
 
-### IntegrationLog
+### Participant
 
-- Tracks integration activities and errors
-- Stores webhook data and sync logs
+- Represents individual tickets/participants
+- Contains QR codes and check-in status
+- Linked to orders
+- Tracks validation and attendance
 
 ## 🔄 Background Jobs
 
-The service includes a scheduled job that runs every 10 seconds to:
+The service includes a scheduled job that runs every 20 seconds for each active event to:
 
 - Fetch updated orders from Sympla API
-- Validate and process tickets
+- Validate and process participants
 - Update local cache with latest data
 - Maintain event synchronization
 
 ## 📊 Data Models
+
+### Event
+
+```typescript
+interface Event {
+  id: string;
+  sympla_event_id: string;
+  name: string;
+  active: boolean;
+  created_at: Date;
+  updated_at: Date;
+  last_update_date: Date;
+}
+```
 
 ### Order
 
 ```typescript
 interface Order {
   id: string;
+  sympla_order_id: string;
   event_id: string;
-  order_date: string;
-  order_status: string;
-  transaction_type: string;
-  buyer_first_name: string;
-  buyer_last_name: string;
-  buyer_email: string;
-  updated_date: string;
+  order_status: OrderStatus;
+  created_at: Date;
+  updated_at: Date;
 }
 ```
 
-### Ticket
+### Participant
 
 ```typescript
-interface Ticket {
+interface Participant {
+  id: string;
+  sympla_participant_id: string;
+  number: string;
+  qr_code: string;
   order_id: string;
-  order_status: string;
-  ticket_num_qr_code: string;
-  checkin: TicketCheckin;
+  checked_in: boolean;
+  created_at: Date;
+  updated_at: Date;
 }
 ```
 
@@ -207,6 +226,7 @@ Create a `.env` file with the following variables:
 ```env
 PORT=3000
 DATABASE_URL="postgresql://username:password@localhost:5432/sympla_homologation"
+DIRECT_URL="postgresql://username:password@localhost:5432/sympla_homologation"
 # Add Sympla API credentials and other configuration
 ```
 

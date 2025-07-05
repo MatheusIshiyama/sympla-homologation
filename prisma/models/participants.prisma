@@ -1,12 +1,14 @@
-model Ticket {
+model Participant {
   id        String   @id @default(cuid())
-  name      String
-  price     String
+  sympla_participant_id String   @unique
+  number    String
+  qr_code   String
   order_id   String   
+  checked_in      Boolean  @default(false)
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
   order Order @relation(fields: [order_id], references: [id])
 
-  @@map("Tickets")
+  @@map("Participants")
 }
