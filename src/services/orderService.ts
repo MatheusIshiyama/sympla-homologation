@@ -15,8 +15,8 @@ export class OrderService {
     return this.orderRepository.getOrderById(id, tx);
   }
 
-  async getOrderBySymplaId(symplaId: string, tx?: Prisma.TransactionClient): Promise<Order | null> {
-    return this.orderRepository.getOrderBySymplaId(symplaId, tx);
+  async getOrderByReferenceId(referenceId: string, tx?: Prisma.TransactionClient): Promise<Order | null> {
+    return this.orderRepository.getOrderByReferenceId(referenceId, tx);
   }
 
   async getOrderWithTickets(id: string, tx?: Prisma.TransactionClient): Promise<Order | null> {
@@ -27,22 +27,26 @@ export class OrderService {
     return this.orderRepository.createOrder(data, tx);
   }
 
-  async updateOrder(id: string, data: Prisma.OrderUpdateInput, tx?: Prisma.TransactionClient): Promise<Order> {
-    return this.orderRepository.updateOrder(id, data, tx);
+  async updateOrderById(id: string, data: Prisma.OrderUpdateInput, tx?: Prisma.TransactionClient): Promise<Order> {
+    return this.orderRepository.updateOrderById(id, data, tx);
   }
 
-  async updateOrderBySymplaId(symplaId: string, data: Prisma.OrderUpdateInput, tx?: Prisma.TransactionClient): Promise<Order> {
-    const orderExists: Order | null = await this.getOrderBySymplaId(symplaId, tx);
+  async updateOrderByReferenceId(referenceId: string, data: Prisma.OrderUpdateInput, tx?: Prisma.TransactionClient): Promise<Order> {
+    const orderExists: Order | null = await this.getOrderByReferenceId(referenceId, tx);
 
     if (!orderExists) throw new Error('Order not found');
 
-    return this.updateOrder(orderExists.id, data, tx);
+    return this.updateOrderById(orderExists.id, data, tx);
   }
 
-  async createOrUpdateOrderBySymplaId(symplaId: string, data: Prisma.OrderCreateInput, tx?: Prisma.TransactionClient): Promise<Order> {
-    const orderExists: Order | null = await this.getOrderBySymplaId(symplaId, tx);
+  async createOrUpdateOrderByReferenceId(
+    referenceId: string,
+    data: Prisma.OrderCreateInput,
+    tx?: Prisma.TransactionClient,
+  ): Promise<Order> {
+    const orderExists: Order | null = await this.getOrderByReferenceId(referenceId, tx);
 
-    if (orderExists) return this.updateOrder(orderExists.id, data, tx);
+    if (orderExists) return this.updateOrderById(orderExists.id, data, tx);
 
     return this.createOrder(data, tx);
   }

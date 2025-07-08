@@ -1,33 +1,25 @@
 model Order {
   id                      String   @id @default(cuid())
-  sympla_order_id         String   @unique
+  reference_id            String   @unique
   event_id                String   
-  order_status            OrderStatus @default(APPROVED)
+  order_date              DateTime
+  order_status            String
+  updated_date            DateTime?
+  approved_date           DateTime?
+  transaction_type        String?
+  order_total_sale_price  Float?
+  order_total_net_value   Float?
+  buyer_first_name        String?
+  buyer_last_name         String?
+  buyer_email             String?
+  utm_id                  String?
+  
   created_at              DateTime @default(now())
   updated_at              DateTime @updatedAt
 
   event  Event    @relation(fields: [event_id], references: [id])
   participants Participant[]
+  utm UTM?
 
   @@map("Orders")
-}
-
-enum OrderStatus {
-  APPROVED
-  CANCELLED
-  PENDING
-  REFUNDED
-  NOT_APPROVED
-  UNPAID
-}
-
-enum TransactionType {
-  BOLETO_BANCARIO
-  CREDIT_CARD
-  DEBITO_ONLINE
-  DEBIT_CARD
-  FREE
-  MANUAL
-  PAYPAL
-  PDV
 }

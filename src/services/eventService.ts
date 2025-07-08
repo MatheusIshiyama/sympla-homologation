@@ -16,8 +16,8 @@ export class EventService {
     return this.eventRepository.getEventById(id);
   }
 
-  async getEventBySymplaId(symplaId: string): Promise<Event | null> {
-    return this.eventRepository.getEventBySymplaId(symplaId);
+  async getEventByReferenceId(referenceId: string): Promise<Event | null> {
+    return this.eventRepository.getEventByReferenceId(referenceId);
   }
 
   async createEvent(data: Prisma.EventCreateInput, tx?: Prisma.TransactionClient): Promise<Event> {

@@ -1,6 +1,6 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios';
 
-import type { SymplaOrderResponse, SymplaTicketResponse } from '@/types';
+import type { SymplaOrderResponse, SymplaParticipantResponse } from '@/types';
 
 const baseURL: string = 'https://api.sympla.com.br/public/v3';
 const apiKey: string = process.env.SYMPLA_API_KEY || '';
@@ -43,7 +43,7 @@ export class SymplaApiClient {
     return this.makeRequest<SymplaOrderResponse>(`/events/${eventId}/orders`, { params });
   }
 
-  async getOrderParticipants(eventId: string, orderId: string): Promise<SymplaTicketResponse> {
-    return this.makeRequest<SymplaTicketResponse>(`/events/${eventId}/orders/${orderId}/participants`);
+  async getOrderParticipants(eventId: string, orderId: string): Promise<SymplaParticipantResponse> {
+    return this.makeRequest<SymplaParticipantResponse>(`/events/${eventId}/orders/${orderId}/participants`);
   }
 }

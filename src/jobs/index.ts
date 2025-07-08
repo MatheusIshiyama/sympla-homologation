@@ -6,13 +6,15 @@ import { eventService } from '@/services';
 import { logger } from '@/utils';
 
 export const startJobs: () => Promise<void> = async () => {
-  try {
-    const events: Event[] = await eventService.getAllEvents({ where: { active: true } });
+  nodeCron.schedule('*/20 * * * * *', async () => {
+    try {
+      const events: Event[] = await eventService.getAllEvents({ where: { active: true } });
 
-    events.forEach((event: Event) => {
-      nodeCron.schedule('*/20 * * * * *', () => updateOrders(event.id));
-    });
-  } catch (error) {
-    logger('ERROR', 'JOBS', `Error starting jobs: ${error}`);
-  }
+      const promises: Promise<void>[] = events.map((event: Event) => updateOrders(event.id));
+
+      await Promise.all(promises);
+    } catch (error) {
+      logger('ERROR', 'JOBS', `Error starting jobs: ${error}`);
+    }
+  });
 };

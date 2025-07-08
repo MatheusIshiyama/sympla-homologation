@@ -13,8 +13,8 @@ export class OrderRepository extends BaseRepository {
     return this.getPrismaClient(tx).order.findUnique({ where: { id } });
   }
 
-  async getOrderBySymplaId(symplaId: string, tx?: Prisma.TransactionClient): Promise<Order | null> {
-    return this.getPrismaClient(tx).order.findUnique({ where: { sympla_order_id: symplaId } });
+  async getOrderByReferenceId(referenceId: string, tx?: Prisma.TransactionClient): Promise<Order | null> {
+    return this.getPrismaClient(tx).order.findUnique({ where: { reference_id: referenceId } });
   }
 
   async getOrderWithTickets(id: string, tx?: Prisma.TransactionClient): Promise<Order | null> {
@@ -32,7 +32,7 @@ export class OrderRepository extends BaseRepository {
     });
   }
 
-  async updateOrder(orderId: string, data: Prisma.OrderUpdateInput, tx?: Prisma.TransactionClient): Promise<Order> {
+  async updateOrderById(orderId: string, data: Prisma.OrderUpdateInput, tx?: Prisma.TransactionClient): Promise<Order> {
     return this.getPrismaClient(tx).order.update({
       where: { id: orderId },
       data,
@@ -42,15 +42,19 @@ export class OrderRepository extends BaseRepository {
   async createOrUpdateOrder(id: string, data: Prisma.OrderCreateInput, tx?: Prisma.TransactionClient): Promise<Order> {
     const orderExists: Order | null = await this.getOrderById(id, tx);
 
-    if (orderExists) return this.updateOrder(orderExists.id, data, tx);
+    if (orderExists) return this.updateOrderById(orderExists.id, data, tx);
 
     return this.createOrder(data, tx);
   }
 
-  async createOrUpdateOrderBySymplaId(symplaId: string, data: Prisma.OrderCreateInput, tx?: Prisma.TransactionClient): Promise<Order> {
-    const orderExists: Order | null = await this.getOrderBySymplaId(symplaId, tx);
+  async createOrUpdateOrderByReferenceId(
+    referenceId: string,
+    data: Prisma.OrderCreateInput,
+    tx?: Prisma.TransactionClient,
+  ): Promise<Order> {
+    const orderExists: Order | null = await this.getOrderByReferenceId(referenceId, tx);
 
-    if (orderExists) return this.updateOrder(orderExists.id, data, tx);
+    if (orderExists) return this.updateOrderById(orderExists.id, data, tx);
 
     return this.createOrder(data, tx);
   }

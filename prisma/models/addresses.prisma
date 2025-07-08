@@ -1,0 +1,21 @@
+model Address {
+  id           String   @id @default(cuid())
+  event_id     String   @unique
+  name         String
+  address      String?
+  address_num  String?
+  address_alt  String?
+  neighborhood String?
+  city         String
+  state        String?
+  zip_code     String?
+  country      String?
+  lon          Float?
+  lat          Float?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  event Event @relation(fields: [event_id], references: [id])
+
+  @@map("Addresses")
+}

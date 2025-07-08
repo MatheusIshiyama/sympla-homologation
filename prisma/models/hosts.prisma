@@ -1,0 +1,12 @@
+model Host {
+  id          String  @id @default(cuid())
+  event_id    String  @unique
+  name        String
+  description String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  event Event @relation(fields: [event_id], references: [id])
+
+  @@map("Hosts")
+}

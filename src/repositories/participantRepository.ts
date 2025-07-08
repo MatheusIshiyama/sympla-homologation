@@ -18,8 +18,8 @@ export class ParticipantRepository extends BaseRepository {
     return this.getPrismaClient(tx).participant.findUnique({ where: { id } });
   }
 
-  async getParticipantBySymplaId(symplaId: string, tx?: Prisma.TransactionClient): Promise<Participant | null> {
-    return this.getPrismaClient(tx).participant.findUnique({ where: { sympla_participant_id: symplaId } });
+  async getParticipantByReferenceId(referenceId: string, tx?: Prisma.TransactionClient): Promise<Participant | null> {
+    return this.getPrismaClient(tx).participant.findUnique({ where: { reference_id: referenceId } });
   }
 
   async createParticipant(participant: Prisma.ParticipantCreateInput, tx?: Prisma.TransactionClient): Promise<Participant> {
@@ -43,12 +43,12 @@ export class ParticipantRepository extends BaseRepository {
     return this.createParticipant(data, tx);
   }
 
-  async createOrUpdateParticipantBySymplaId(
-    symplaId: string,
+  async createOrUpdateParticipantByReferenceId(
+    referenceId: string,
     data: Prisma.ParticipantCreateInput,
     tx?: Prisma.TransactionClient,
   ): Promise<Participant> {
-    const participantExists: Participant | null = await this.getParticipantBySymplaId(symplaId, tx);
+    const participantExists: Participant | null = await this.getParticipantByReferenceId(referenceId, tx);
 
     if (participantExists) return this.updateParticipant(participantExists.id, data, tx);
 

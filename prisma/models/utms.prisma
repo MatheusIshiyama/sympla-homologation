@@ -1,0 +1,17 @@
+model UTM {
+  id String @id @default(cuid())
+  order_id String @unique
+  utm_source            String?
+  utm_medium            String?
+  utm_campaign          String?
+  utm_term              String?
+  utm_content           String?
+  user_agent            String?
+  referrer              String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  order Order @relation(fields: [order_id], references: [id])
+
+  @@map("UTMs")
+}

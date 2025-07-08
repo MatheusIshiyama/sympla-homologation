@@ -22,9 +22,9 @@ export class EventRepository extends BaseRepository {
     });
   }
 
-  async getEventBySymplaId(symplaId: string, tx?: Prisma.TransactionClient): Promise<Event | null> {
+  async getEventByReferenceId(referenceId: string, tx?: Prisma.TransactionClient): Promise<Event | null> {
     return this.getPrismaClient(tx).event.findUnique({
-      where: { sympla_event_id: symplaId },
+      where: { reference_id: referenceId },
       include: {
         orders: {
           orderBy: { created_at: 'desc' },
@@ -54,8 +54,12 @@ export class EventRepository extends BaseRepository {
     return this.createEvent(data, tx);
   }
 
-  async createOrUpdateEventBySymplaId(symplaId: string, data: Prisma.EventCreateInput, tx?: Prisma.TransactionClient): Promise<Event> {
-    const eventExists: Event | null = await this.getEventBySymplaId(symplaId, tx);
+  async createOrUpdateEventByReferenceId(
+    referenceId: string,
+    data: Prisma.EventCreateInput,
+    tx?: Prisma.TransactionClient,
+  ): Promise<Event> {
+    const eventExists: Event | null = await this.getEventByReferenceId(referenceId, tx);
 
     if (eventExists) return this.updateEvent(eventExists.id, data, tx);
 
