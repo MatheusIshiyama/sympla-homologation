@@ -1,0 +1,11 @@
+model Permission {
+  id         String   @id @default(cuid())
+  role_id    String
+  name       String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  role Role @relation(fields: [role_id], references: [id])
+
+  @@map("Permissions")
+}

@@ -1,5 +1,7 @@
 model Event {
   id               String   @id @default(cuid())
+  user_id          String
+  integration_id   String
   reference_id     String   @unique
   name             String
   detail           String?
@@ -17,7 +19,10 @@ model Event {
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt
 
-  address Address? 
+  user        User        @relation(fields: [user_id], references: [id])
+  integration Integration @relation(fields: [integration_id], references: [id])
+
+  address Address?
   host    Host?
 
   orders Order[]
