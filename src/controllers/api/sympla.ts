@@ -8,39 +8,64 @@ import { participantService } from '@/services/participantService';
 import { logger, parseDate } from '@/utils';
 
 import type { SymplaOrder, SymplaOrderResponse, SymplaParticipant, SymplaParticipantResponse } from '@/types';
-import type { Event, Order, Participant, Prisma } from '@prisma/client';
+import type { Event, Integration, Order, Participant, Prisma } from '@prisma/client';
 
 export class SymplaController {
-  private symplaClient: SymplaApiClient;
+  private async getSymplaApiClientByEventReferenceId(eventReferenceId: string): Promise<SymplaApiClient> {
+    try {
+      const event: (Event & { integration: Integration }) | null = (await eventService.getEventByReferenceId(eventReferenceId)) as
+        | (Event & {
+            integration: Integration;
+          })
+        | null;
 
-  constructor() {
-    this.symplaClient = new SymplaApiClient();
+      if (!event) {
+        throw new Error(`Event not found for eventReferenceId: ${eventReferenceId}`);
+      }
+
+      return new SymplaApiClient(event.integration.token);
+    } catch (error) {
+      logger(
+        'ERROR',
+        'SYMPLA - GET SYMPLA API CLIENT BY EVENT REFERENCE ID',
+        `Error getting sympla api client by eventReferenceId: ${eventReferenceId}`,
+      );
+      throw error;
+    }
   }
 
-  async getOrdersByEventId(eventId: string, page: number = 1): Promise<SymplaOrderResponse> {
+  async getOrdersByEventReferenceId(eventReferenceId: string, page: number = 1): Promise<SymplaOrderResponse> {
     try {
-      const orders: SymplaOrderResponse = await this.symplaClient.getOrders(eventId, page);
+      const symplaApiClient = await this.getSymplaApiClientByEventReferenceId(eventReferenceId);
+
+      const orders: SymplaOrderResponse = await symplaApiClient.getOrders(eventReferenceId, page);
 
       return orders;
     } catch (error) {
-      logger('ERROR', 'SYMPLA - GET ORDERS BY EVENT ID', `Error getting orders by eventId: ${eventId}`);
+      logger('ERROR', 'SYMPLA - GET ORDERS BY EVENT ID', `Error getting orders by eventReferenceId: ${eventReferenceId}`);
       throw error;
     }
   }
 
-  async getOrderParticipants(eventId: string, orderId: string): Promise<SymplaParticipantResponse> {
+  async getOrderParticipants(eventReferenceId: string, orderId: string): Promise<SymplaParticipantResponse> {
     try {
-      const participants: SymplaParticipantResponse = await this.symplaClient.getOrderParticipants(eventId, orderId);
+      const symplaApiClient = await this.getSymplaApiClientByEventReferenceId(eventReferenceId);
+
+      const participants: SymplaParticipantResponse = await symplaApiClient.getOrderParticipants(eventReferenceId, orderId);
 
       return participants;
     } catch (error) {
-      logger('ERROR', 'SYMPLA - GET ORDER PARTICIPANTS', `Error getting order participants by eventId: ${eventId} and orderId: ${orderId}`);
+      logger(
+        'ERROR',
+        'SYMPLA - GET ORDER PARTICIPANTS',
+        `Error getting order participants by eventReferenceId: ${eventReferenceId} and orderId: ${orderId}`,
+      );
       throw error;
     }
   }
 
-  async getParticipantsFromOrder(eventId: string, orderId: string): Promise<SymplaParticipant[]> {
-    const { data: participants } = await this.getOrderParticipants(eventId, orderId);
+  async getParticipantsFromOrder(eventReferenceId: string, orderId: string): Promise<SymplaParticipant[]> {
+    const { data: participants } = await this.getOrderParticipants(eventReferenceId, orderId);
 
     return participants.map(
       (participant: SymplaParticipant): SymplaParticipant => ({
@@ -50,15 +75,17 @@ export class SymplaController {
     );
   }
 
-  async fetchAllOrdersFromEvent(eventId: string, prevResults: SymplaOrder[] = [], page: number = 1): Promise<SymplaOrder[]> {
+  async fetchAllOrdersFromEvent(eventReferenceId: string, prevResults: SymplaOrder[] = [], page: number = 1): Promise<SymplaOrder[]> {
     try {
-      const response: SymplaOrderResponse = await this.symplaClient.getOrders(eventId, page);
+      const symplaApiClient = await this.getSymplaApiClientByEventReferenceId(eventReferenceId);
+
+      const response: SymplaOrderResponse = await symplaApiClient.getOrders(eventReferenceId, page);
       const results: SymplaOrder[] = [...prevResults, ...response.data];
       const hasNextPage: boolean = response.pagination.has_next;
 
-      return hasNextPage ? this.fetchAllOrdersFromEvent(eventId, results, page + 1) : results;
+      return hasNextPage ? this.fetchAllOrdersFromEvent(eventReferenceId, results, page + 1) : results;
     } catch (error) {
-      logger('ERROR', 'SYMPLA - FETCH ALL ORDERS FROM EVENT', `Error fetching all orders from eventId: ${eventId}`);
+      logger('ERROR', 'SYMPLA - FETCH ALL ORDERS FROM EVENT', `Error fetching all orders from eventReferenceId: ${eventReferenceId}`);
       throw error;
     }
   }

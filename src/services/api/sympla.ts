@@ -3,17 +3,16 @@ import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse 
 import type { SymplaOrderResponse, SymplaParticipantResponse } from '@/types';
 
 const baseURL: string = 'https://api.sympla.com.br/public/v3';
-const apiKey: string = process.env.SYMPLA_API_KEY || '';
 
 export class SymplaApiClient {
   private axiosInstance: AxiosInstance;
 
-  constructor() {
+  constructor(token: string) {
     this.axiosInstance = axios.create({
       baseURL,
       headers: {
         'Content-Type': 'application/json',
-        's_token': apiKey,
+        's_token': token,
       },
     });
   }

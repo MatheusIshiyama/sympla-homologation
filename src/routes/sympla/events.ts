@@ -16,4 +16,4 @@ router.get('/:eventId', async (req: Request, res: Response): Promise<any> => {
   return res.json({ status: 'ok' });
 });
 
-export default router;
+export const symplaEventsRouter: Router = router;

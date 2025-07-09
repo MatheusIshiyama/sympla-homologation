@@ -1,9 +1,9 @@
 import { Router } from 'express';
 
-import events from '@/routes/sympla/events';
+import { symplaEventsRouter } from '@/routes/sympla/events';
 
 const router: Router = Router();
 
-router.use('/events', events);
+router.use('/events', symplaEventsRouter);
 
-export default router;
+export const symplaRoutes: Router = router;

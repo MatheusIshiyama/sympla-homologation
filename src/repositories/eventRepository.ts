@@ -29,6 +29,7 @@ export class EventRepository extends BaseRepository {
         orders: {
           orderBy: { created_at: 'desc' },
         },
+        integration: true,
       },
     });
   }
