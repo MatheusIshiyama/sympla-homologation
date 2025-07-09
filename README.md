@@ -1,69 +1,69 @@
-# Sympla Homologation
+# Sympla Homologation API
 
-A Node.js API service for managing and synchronizing event data with the Sympla platform. This service provides real-time order updates, participant validation, and event management capabilities.
+A Node.js API service for integrating with Sympla's event management platform. This service provides event synchronization, order management, and automated data updates between your system and Sympla.
 
 ## 🚀 Features
 
-- **Real-time Order Synchronization**: Automatically syncs order updates from Sympla every 20 seconds
-- **Participant Management**: Manages and validates participants (tickets) for events
-- **Event Management**: Track event-specific data and updates
-- **TypeScript Support**: Full TypeScript implementation with strict typing
-- **Scheduled Jobs**: Automated background tasks using node-cron
+- **Event Management**: Sync and manage events from Sympla platform
+- **Order Processing**: Automatically update and sync orders with status tracking
+- **Background Jobs**: Automated order updates every 20 seconds for active events
 - **Database Integration**: PostgreSQL database with Prisma ORM
+- **RESTful API**: Clean REST endpoints for event and order operations
+- **TypeScript**: Full TypeScript support with strict typing
 
 ## 📋 Prerequisites
 
 - Node.js (v18 or higher)
-- pnpm (recommended) or npm
-- TypeScript
 - PostgreSQL database
+- pnpm (recommended) or npm
 
 ## 🛠️ Installation
 
-1. Clone the repository:
+1. **Clone the repository**
 
-```bash
-git clone https://github.com/MatheusIshiyama/sympla-homologation.git
-cd sympla-homologation
-```
+   ```bash
+   git clone https://github.com/MatheusIshiyama/sympla-homologation.git
+   cd sympla-homologation
+   ```
 
-2. Install dependencies:
+2. **Install dependencies**
 
-```bash
-pnpm install
-```
+   ```bash
+   pnpm install
+   ```
 
-3. Create a `.env` file in the root directory and configure your environment variables:
+3. **Environment Setup**
+   Create a `.env` file in the root directory with the following variables:
 
-```env
-PORT=3000
-DATABASE_URL="postgresql://username:password@localhost:5432/sympla_homologation"
-DIRECT_URL="postgresql://username:password@localhost:5432/sympla_homologation"
-# Add other required environment variables for Sympla API integration
-```
+   ```env
+   # Database
+   DATABASE_URL="postgresql://username:password@localhost:5432/sympla_homologation"
+   DIRECT_URL="postgresql://username:password@localhost:5432/sympla_homologation"
 
-4. Set up the database:
+   # Server
+   PORT=3000
+   ```
 
-```bash
-# Generate Prisma client
-pnpm prisma:generate
+````
 
-# Push the schema to your database
-pnpm prisma:migrate
+4. **Database Setup**
 
-# Or run migrations (if you prefer migrations)
-pnpm prisma:migrate
-```
+ ```bash
+ # Generate Prisma client
+ pnpm prisma:generate
+
+ # Run database migrations
+ pnpm prisma:migrate
+````
 
 ## 🚀 Usage
 
 ### Development
 
 ```bash
+# Start development server with hot reload
 pnpm dev
 ```
-
-This starts the development server with hot reload using `tsx watch`.
 
 ### Production
 
@@ -71,164 +71,136 @@ This starts the development server with hot reload using `tsx watch`.
 # Build the project
 pnpm build
 
-# Start the production server
+# Start production server
 pnpm start
 ```
 
 ### Database Management
 
 ```bash
+# Open Prisma Studio (database GUI)
+pnpm prisma:studio
+
 # Generate Prisma client
 pnpm prisma:generate
 
 # Run migrations
 pnpm prisma:migrate
-
-# Open Prisma Studio (database GUI)
-pnpm prisma:studio
 ```
 
-### Linting
-
-```bash
-pnpm lint
-```
-
-## 📡 API Endpoints
+## 📚 API Documentation
 
 ### Health Check
 
-- **GET** `/health` - Service health status
+```http
+GET /health
+```
 
-### Sympla Events
+### Events
 
-- **GET** `/sympla/events/:eventId` - Get event data
+```http
+GET /sympla/events/:eventId
+```
 
-### Example Requests
+Returns event information by ID.
+
+**Example:**
 
 ```bash
-# Health check
-curl http://localhost:3000/health
-
-# Get event data
-curl http://localhost:3000/sympla/events/3024800
-```
-
-## 🔧 Project Structure
-
-```
-src/
-├── config/          # Configuration files
-├── controllers/     # API controllers
-├── database/        # Database connection (Prisma)
-├── jobs/           # Background jobs and scheduled tasks
-├── repositories/   # Data access layer
-├── routes/         # Express routes
-├── services/       # Business logic and external service integrations
-├── types/          # TypeScript type definitions
-└── utils/          # Utility functions
-prisma/
-├── models/         # Database model definitions
-├── migrations/     # Database migrations
-└── schema.prisma   # Main database schema
+curl http://localhost:3000/sympla/events/1111111
 ```
 
 ## 🗄️ Database Schema
 
-The application uses PostgreSQL with the following main models:
+The application uses PostgreSQL with the following main entities:
 
-### Event
+### Events
 
-- Stores event information from Sympla
-- Tracks event status, dates, and location
-- Related to multiple orders
-- Includes `last_update_date` for synchronization tracking
+- Event management with integration details
+- Support for private/public events
+- Status tracking (active, published, cancelled)
+- Date range management (start_date, end_date)
 
-### Order
+### Orders
 
-- Stores order data from Sympla
-- Contains order status and transaction information
-- Linked to events and participants
-- Supports multiple order statuses (APPROVED, CANCELLED, PENDING, etc.)
+- Order processing and status tracking
+- Buyer information management
+- Transaction details and pricing
+- UTM tracking support
 
-### Participant
+### Participants
 
-- Represents individual tickets/participants
-- Contains QR codes and check-in status
-- Linked to orders
-- Tracks validation and attendance
+- Attendee management for events
+- Order association
+- Contact information
+
+### Integrations
+
+- API configuration management
+- Credential storage
+- Service-specific settings
 
 ## 🔄 Background Jobs
 
-The service includes a scheduled job that runs every 20 seconds for each active event to:
+The application runs automated jobs every 20 seconds to:
 
-- Fetch updated orders from Sympla API
-- Validate and process participants
-- Update local cache with latest data
-- Maintain event synchronization
+1. **Fetch Active Events**: Retrieve all active events from the database
+2. **Update Orders**: Sync new orders from Sympla API for each active event
+3. **Status Validation**: Filter orders with valid status ("A" for approved)
+4. **Database Updates**: Store new order data in the local database
 
-## 📊 Data Models
+## 🏗️ Project Structure
 
-### Event
-
-```typescript
-interface Event {
-  id: string;
-  sympla_event_id: string;
-  name: string;
-  active: boolean;
-  created_at: Date;
-  updated_at: Date;
-  last_update_date: Date;
-}
 ```
-
-### Order
-
-```typescript
-interface Order {
-  id: string;
-  sympla_order_id: string;
-  event_id: string;
-  order_status: OrderStatus;
-  created_at: Date;
-  updated_at: Date;
-}
-```
-
-### Participant
-
-```typescript
-interface Participant {
-  id: string;
-  sympla_participant_id: string;
-  number: string;
-  qr_code: string;
-  order_id: string;
-  checked_in: boolean;
-  created_at: Date;
-  updated_at: Date;
-}
+src/
+├── config/          # Environment and configuration
+├── controllers/     # API controllers
+├── database/        # Database connection
+├── jobs/           # Background job processing
+├── repositories/    # Data access layer
+├── routes/         # API route definitions
+├── services/       # Business logic
+├── types/          # TypeScript type definitions
+└── utils/          # Utility functions
 ```
 
 ## 🧪 Testing
 
-Use the provided HTTP request files in the `requests/` directory to test the API endpoints:
+Use the provided HTTP request files in the `requests/` directory to test the API:
 
-- `requests/health.http` - Health check endpoint
-- `requests/events.http` - Event data endpoint
-- `requests/integrations/sympla.http` - Sympla integration endpoint
+- `requests/events.http` - Event endpoint testing
+- `requests/health.http` - Health check testing
+- `requests/integrations/sympla.http` - Integration testing
 
-## 📝 Environment Variables
+## 📝 Scripts
 
-Create a `.env` file with the following variables:
+| Script                 | Description                              |
+| ---------------------- | ---------------------------------------- |
+| `pnpm dev`             | Start development server with hot reload |
+| `pnpm build`           | Build the project for production         |
+| `pnpm start`           | Start production server                  |
+| `pnpm lint`            | Run ESLint for code quality              |
+| `pnpm prisma:generate` | Generate Prisma client                   |
+| `pnpm prisma:migrate`  | Run database migrations                  |
+| `pnpm prisma:studio`   | Open Prisma Studio GUI                   |
 
-```env
-PORT=3000
-DATABASE_URL="postgresql://username:password@localhost:5432/sympla_homologation"
-DIRECT_URL="postgresql://username:password@localhost:5432/sympla_homologation"
-# Add Sympla API credentials and other configuration
-```
+## 🔧 Configuration
+
+### Environment Variables
+
+| Variable       | Description                  | Required |
+| -------------- | ---------------------------- | -------- |
+| `DATABASE_URL` | PostgreSQL connection string | Yes      |
+| `DIRECT_URL`   | Direct database connection   | No       |
+| `PORT`         | Server port (default: 3000)  | No       |
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## 📄 License
 
@@ -238,6 +210,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Matheus Ishiyama** - [matheus.ishiyama@outlook.com](mailto:matheus.ishiyama@outlook.com)
 
-## 🔗 Repository
+## 🆘 Support
 
-- **GitHub**: [https://github.com/MatheusIshiyama/sympla-homologation.git](https://github.com/MatheusIshiyama/sympla-homologation.git)
+For support and questions, please contact the development team or create an issue in the repository.
