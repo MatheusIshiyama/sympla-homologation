@@ -1,6 +1,6 @@
-import { Event } from '@prisma/client';
 import nodeCron from 'node-cron';
 
+import { Event } from '@/entities';
 import { updateOrders } from '@/jobs/updateOrders';
 import { eventService } from '@/services';
 import { logger } from '@/utils';

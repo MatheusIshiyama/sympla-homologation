@@ -1,54 +1,48 @@
-import { BaseRepository } from '@/repositories';
+import { Participant } from '@/entities';
+import { participantRepository, ParticipantRepository } from '@/repositories';
 
-import type { Participant, Prisma } from '@prisma/client';
-import type { DefaultArgs } from '@prisma/client/runtime/library';
+import type { FindManyOptions, QueryRunner } from 'typeorm';
 
-export class ParticipantService extends BaseRepository {
-  async getAllParticipants(
-    findManyArgs: Prisma.ParticipantFindManyArgs<DefaultArgs>,
-    tx?: Prisma.TransactionClient,
-  ): Promise<Participant[]> {
-    return this.getPrismaClient(tx).participant.findMany({
-      orderBy: { created_at: 'desc' },
-      ...findManyArgs,
-    });
+export class ParticipantService {
+  constructor(private readonly participantRepository: ParticipantRepository) {
+    this.participantRepository = participantRepository;
   }
 
-  async getParticipantById(id: string, tx?: Prisma.TransactionClient): Promise<Participant | null> {
-    return this.getPrismaClient(tx).participant.findUnique({ where: { id } });
+  async getAllParticipants(findManyOptions: FindManyOptions<Participant>, queryRunner?: QueryRunner): Promise<Participant[]> {
+    return this.participantRepository.getAllParticipants(findManyOptions, queryRunner);
   }
 
-  async getParticipantByReferenceId(referenceId: string, tx?: Prisma.TransactionClient): Promise<Participant | null> {
-    return this.getPrismaClient(tx).participant.findUnique({ where: { reference_id: referenceId } });
+  async getParticipantById(id: string, queryRunner?: QueryRunner): Promise<Participant | null> {
+    return this.participantRepository.getParticipantById(id, queryRunner);
   }
 
-  async createParticipant(data: Prisma.ParticipantCreateInput, tx?: Prisma.TransactionClient): Promise<Participant> {
-    return this.getPrismaClient(tx).participant.create({ data });
+  async getParticipantByReferenceId(referenceId: string, queryRunner?: QueryRunner): Promise<Participant | null> {
+    return this.participantRepository.getParticipantByReferenceId(referenceId, queryRunner);
   }
 
-  async updateParticipant(id: string, data: Prisma.ParticipantUpdateInput, tx?: Prisma.TransactionClient): Promise<Participant> {
-    return this.getPrismaClient(tx).participant.update({ where: { id }, data });
+  async createParticipant(data: Partial<Participant>, queryRunner?: QueryRunner): Promise<Participant> {
+    return this.participantRepository.createParticipant(data, queryRunner);
   }
 
-  async createOrUpdateParticipant(id: string, data: Prisma.ParticipantCreateInput, tx?: Prisma.TransactionClient): Promise<Participant> {
-    const participantExists: Participant | null = await this.getParticipantById(id, tx);
+  async updateParticipant(id: string, data: Partial<Participant>, queryRunner?: QueryRunner): Promise<Participant> {
+    return this.participantRepository.updateParticipant(id, data, queryRunner);
+  }
 
-    if (participantExists) return this.updateParticipant(participantExists.id, data, tx);
-
-    return this.createParticipant(data, tx);
+  async createOrUpdateParticipantById(id: string, data: Partial<Participant>, queryRunner?: QueryRunner): Promise<Participant> {
+    return this.participantRepository.createOrUpdateParticipantById(id, data, queryRunner);
   }
 
   async createOrUpdateParticipantByReferenceId(
     referenceId: string,
-    data: Prisma.ParticipantCreateInput,
-    tx?: Prisma.TransactionClient,
+    data: Partial<Participant>,
+    queryRunner?: QueryRunner,
   ): Promise<Participant> {
-    const participantExists: Participant | null = await this.getParticipantByReferenceId(referenceId, tx);
+    const participantExists: Participant | null = await this.getParticipantByReferenceId(referenceId, queryRunner);
 
-    if (participantExists) return this.updateParticipant(participantExists.id, data, tx);
+    if (participantExists) return this.updateParticipant(participantExists.id, data, queryRunner);
 
-    return this.createParticipant(data, tx);
+    return this.createParticipant(data, queryRunner);
   }
 }
 
-export const participantService: ParticipantService = new ParticipantService();
+export const participantService: ParticipantService = new ParticipantService(participantRepository);

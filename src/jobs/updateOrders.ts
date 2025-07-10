@@ -1,9 +1,9 @@
 import { symplaController } from '@/controllers/api';
+import { Event } from '@/entities';
 import { eventService } from '@/services';
 import { logger } from '@/utils';
 
 import type { SymplaOrder } from '@/types';
-import type { Event } from '@prisma/client';
 
 // ? Return just the orders that are valid (status "A")
 const getValidNewOrdersIds: (newOrders: SymplaOrder[]) => string[] = (newOrders: SymplaOrder[]): string[] => {

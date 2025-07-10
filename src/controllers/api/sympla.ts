@@ -1,23 +1,18 @@
 import dateFns from 'date-fns';
+import { QueryRunner } from 'typeorm';
 
-import { prisma } from '@/database/prisma';
+import { AppDataSource } from '@/database/data-source';
+import { Event, Order, Participant, Utm } from '@/entities';
+import { eventService, orderService, participantService, utmService } from '@/services';
 import { SymplaApiClient } from '@/services/api';
-import { eventService } from '@/services/eventService';
-import { orderService } from '@/services/orderService';
-import { participantService } from '@/services/participantService';
 import { logger, parseDate } from '@/utils';
 
 import type { SymplaOrder, SymplaOrderResponse, SymplaParticipant, SymplaParticipantResponse } from '@/types';
-import type { Event, Integration, Order, Participant, Prisma } from '@prisma/client';
 
 export class SymplaController {
   private async getSymplaApiClientByEventReferenceId(eventReferenceId: string): Promise<SymplaApiClient> {
     try {
-      const event: (Event & { integration: Integration }) | null = (await eventService.getEventByReferenceId(eventReferenceId)) as
-        | (Event & {
-            integration: Integration;
-          })
-        | null;
+      const event: Event | null = await eventService.getEventByReferenceId(eventReferenceId);
 
       if (!event) {
         throw new Error(`Event not found for eventReferenceId: ${eventReferenceId}`);
@@ -36,7 +31,7 @@ export class SymplaController {
 
   async getOrdersByEventReferenceId(eventReferenceId: string, page: number = 1): Promise<SymplaOrderResponse> {
     try {
-      const symplaApiClient = await this.getSymplaApiClientByEventReferenceId(eventReferenceId);
+      const symplaApiClient: SymplaApiClient = await this.getSymplaApiClientByEventReferenceId(eventReferenceId);
 
       const orders: SymplaOrderResponse = await symplaApiClient.getOrders(eventReferenceId, page);
 
@@ -49,7 +44,7 @@ export class SymplaController {
 
   async getOrderParticipants(eventReferenceId: string, orderId: string): Promise<SymplaParticipantResponse> {
     try {
-      const symplaApiClient = await this.getSymplaApiClientByEventReferenceId(eventReferenceId);
+      const symplaApiClient: SymplaApiClient = await this.getSymplaApiClientByEventReferenceId(eventReferenceId);
 
       const participants: SymplaParticipantResponse = await symplaApiClient.getOrderParticipants(eventReferenceId, orderId);
 
@@ -77,7 +72,7 @@ export class SymplaController {
 
   async fetchAllOrdersFromEvent(eventReferenceId: string, prevResults: SymplaOrder[] = [], page: number = 1): Promise<SymplaOrder[]> {
     try {
-      const symplaApiClient = await this.getSymplaApiClientByEventReferenceId(eventReferenceId);
+      const symplaApiClient: SymplaApiClient = await this.getSymplaApiClientByEventReferenceId(eventReferenceId);
 
       const response: SymplaOrderResponse = await symplaApiClient.getOrders(eventReferenceId, page);
       const results: SymplaOrder[] = [...prevResults, ...response.data];
@@ -98,9 +93,9 @@ export class SymplaController {
 
   async getNewOrdersByEvent(event: Event): Promise<SymplaOrder[]> {
     try {
-      const orders: SymplaOrder[] = await this.fetchAllOrdersFromEvent(event.reference_id);
+      const orders: SymplaOrder[] = await this.fetchAllOrdersFromEvent(event.referenceId);
 
-      return orders.filter((order: SymplaOrder) => dateFns.isAfter(parseDate(order.updated_date), event.last_update_date));
+      return orders.filter((order: SymplaOrder) => dateFns.isAfter(parseDate(order.updated_date), event.lastUpdateDate));
     } catch (error) {
       logger('ERROR', 'SYMPLA - GET UPDATED ORDERS BY EVENT ID', `Error getting updated orders by eventId: ${event.id} - ${error}`);
 
@@ -109,96 +104,88 @@ export class SymplaController {
   }
 
   async updateOrders(event: Event, orders: SymplaOrder[] | Order[]): Promise<void> {
+    const queryRunner: QueryRunner = AppDataSource.createQueryRunner();
+
+    await queryRunner.connect();
+
     try {
-      await prisma.$transaction(
-        async (tx: Prisma.TransactionClient): Promise<void> => {
-          const updateOrderPromises: Promise<Order>[] = orders.map(async (order: SymplaOrder | Order) => {
-            const participants: SymplaParticipant[] = await this.getParticipantsFromOrder(event.reference_id, order.id);
+      await queryRunner.startTransaction();
 
-            const newOrder: Order = await orderService.createOrUpdateOrderByReferenceId(
-              order.id,
-              {
-                reference_id: order.id,
-                order_date: parseDate(order.order_date as string),
-                order_status: order.order_status,
-                updated_date: parseDate(order.updated_date as string),
-                approved_date: parseDate(order.approved_date as string),
-                transaction_type: order.transaction_type,
-                order_total_sale_price: order.order_total_sale_price,
-                order_total_net_value: order.order_total_net_value,
-                buyer_first_name: order.buyer_first_name,
-                buyer_last_name: order.buyer_last_name,
-                buyer_email: order.buyer_email,
-                event: { connect: { id: event.id } },
-                utm: {
-                  connectOrCreate: {
-                    where: {
-                      order_id: (order as SymplaOrder).id,
-                      referrer: (order as SymplaOrder).utm.referrer,
-                    },
-                    create: {
-                      utm_source: (order as SymplaOrder).utm.utm_source,
-                      utm_medium: (order as SymplaOrder).utm.utm_medium,
-                      utm_campaign: (order as SymplaOrder).utm.utm_campaign,
-                      utm_term: (order as SymplaOrder).utm.utm_term,
-                      utm_content: (order as SymplaOrder).utm.utm_content,
-                      user_agent: (order as SymplaOrder).utm.user_agent,
-                      referrer: (order as SymplaOrder).utm.referrer,
-                    },
-                  },
-                },
-              },
-              tx,
-            );
+      const updateOrderPromises: Promise<Order>[] = orders.map(async (order: SymplaOrder | Order | any) => {
+        const participants: SymplaParticipant[] = await this.getParticipantsFromOrder(event.referenceId, order.id);
 
-            const updateParticipantPromises: Promise<Participant>[] = participants.map(
-              async (participant: SymplaParticipant | Participant) => {
-                const participantData: Prisma.ParticipantCreateInput = {
-                  reference_id: String(participant.id),
-                  order_status: participant.order_status,
-                  order_date: parseDate(participant.order_date as string),
-                  order_updated_date: parseDate(participant.order_updated_date as string),
-                  order_approved_date: parseDate(participant.order_approved_date as string),
-                  order_discount: participant.order_discount,
-                  first_name: participant.first_name,
-                  last_name: participant.last_name,
-                  email: participant.email,
-                  ticket_number: participant.ticket_number,
-                  ticket_num_qr_code: participant.ticket_num_qr_code,
-                  ticket_name: participant.ticket_name,
-                  sector_name: participant.sector_name,
-                  marked_place_name: participant.marked_place_name,
-                  access_information: participant.access_information,
-                  pdv_user: participant.pdv_user,
-                  ticket_sale_price: participant.ticket_sale_price,
-                  check_in: (participant as SymplaParticipant).checkin?.check_in,
-                  check_in_date: (participant as SymplaParticipant).checkin?.check_in_date,
-                  ticket_created_at: participant.ticket_created_at,
-                  ticket_updated_at: participant.ticket_updated_at,
-                  presentation_id: String(participant.presentation_id),
-                  order: { connect: { id: newOrder.id } },
-                };
+        const utmData: Partial<Utm> = {
+          utmSource: (order as SymplaOrder).utm.utm_source,
+          utmMedium: (order as SymplaOrder).utm.utm_medium,
+          utmCampaign: (order as SymplaOrder).utm.utm_campaign,
+          utmTerm: (order as SymplaOrder).utm.utm_term,
+          utmContent: (order as SymplaOrder).utm.utm_content,
+          userAgent: (order as SymplaOrder).utm.user_agent,
+          referrer: (order as SymplaOrder).utm.referrer,
+        };
 
-                return participantService.createOrUpdateParticipantByReferenceId(String(participant.id), participantData, tx);
-              },
-            );
+        const newUtm: Utm = await utmService.createOrUpdateUtmById(order.id, utmData, queryRunner);
 
-            await Promise.all(updateParticipantPromises);
+        const orderData: Partial<Order> = {
+          referenceId: (order as SymplaOrder).id,
+          orderDate: parseDate(order.order_date as string),
+          orderStatus: order.order_status,
+          updatedDate: parseDate(order.updated_date as string),
+          approvedDate: parseDate(order.approved_date as string),
+          transactionType: order.transaction_type,
+          orderTotalSalePrice: order.order_total_sale_price,
+          orderTotalNetValue: order.order_total_net_value,
+          buyerFirstName: order.buyer_first_name,
+          buyerLastName: order.buyer_last_name,
+          buyerEmail: order.buyer_email,
+          eventId: event.id,
+          utm: newUtm,
+        };
 
-            return newOrder;
-          });
+        const newOrder: Order = await orderService.createOrUpdateOrderByReferenceId(order.id, orderData, queryRunner);
 
-          await Promise.all(updateOrderPromises);
+        const updateParticipantPromises: Promise<Participant>[] = participants.map(
+          async (participant: SymplaParticipant | Participant | any) => {
+            const participantData: Partial<Participant> = {
+              referenceId: String((participant as SymplaParticipant).id),
+              orderStatus: participant.order_status,
+              orderDate: parseDate(participant.order_date as string),
+              orderUpdatedDate: parseDate(participant.order_updated_date as string),
+              orderApprovedDate: parseDate(participant.order_approved_date as string),
+              orderDiscount: participant.order_discount,
+              firstName: participant.first_name,
+              lastName: participant.last_name,
+              email: participant.email,
+              ticketNumber: participant.ticket_number,
+              ticketNumQrCode: participant.ticket_num_qr_code,
+              ticketName: participant.ticket_name,
+              sectorName: participant.sector_name,
+              markedPlaceName: participant.marked_place_name,
+              accessInformation: participant.access_information,
+              pdvUser: participant.pdv_user,
+              ticketSalePrice: participant.ticket_sale_price,
+              checkIn: (participant as SymplaParticipant).checkin?.check_in,
+              checkInDate: parseDate((participant as SymplaParticipant).checkin?.check_in_date as string),
+              ticketCreatedAt: participant.ticket_created_at,
+              ticketUpdatedAt: participant.ticket_updated_at,
+              presentationId: String(participant.presentation_id),
+              orderId: newOrder.id,
+            };
 
-          const lastUpdateDate: Date = this.filterOrdersByLastUpdateDate(orders as SymplaOrder[]);
+            return participantService.createOrUpdateParticipantByReferenceId(String(participant.id), participantData, queryRunner);
+          },
+        );
 
-          await eventService.updateEvent(event.id, { last_update_date: lastUpdateDate }, tx);
-        },
-        {
-          timeout: 30000,
-          maxWait: 10000, // 10 seconds max wait for transaction to start
-        },
-      );
+        await Promise.all(updateParticipantPromises);
+
+        return newOrder;
+      });
+
+      await Promise.all(updateOrderPromises);
+
+      const lastUpdateDate: Date = this.filterOrdersByLastUpdateDate(orders as SymplaOrder[]);
+
+      await eventService.updateEvent(event.id, { lastUpdateDate }, queryRunner);
     } catch (error) {
       logger('ERROR', 'SYMPLA - UPDATE ORDERS', `Error updating orders for eventId: ${event.id}`);
       throw error;

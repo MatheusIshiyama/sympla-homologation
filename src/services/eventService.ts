@@ -1,39 +1,39 @@
 import { EventRepository, eventRepository } from '@/repositories';
 
-import type { Event, Prisma } from '@prisma/client';
-import type { DefaultArgs } from '@prisma/client/runtime/library';
+import type { Event } from '@/entities';
+import type { FindManyOptions, QueryRunner } from 'typeorm';
 
 export class EventService {
   constructor(private readonly eventRepository: EventRepository) {
     this.eventRepository = eventRepository;
   }
 
-  async getAllEvents(findManyArgs: Prisma.EventFindManyArgs<DefaultArgs>): Promise<Event[]> {
-    return this.eventRepository.getAllEvents(findManyArgs);
+  async getAllEvents(findManyOptions: FindManyOptions<Event>): Promise<Event[]> {
+    return this.eventRepository.getAllEvents(findManyOptions);
   }
 
-  async getEventById(id: string): Promise<Event | null> {
-    return this.eventRepository.getEventById(id);
+  async getEventById(id: string, queryRunner?: QueryRunner): Promise<Event | null> {
+    return this.eventRepository.getEventById(id, queryRunner);
   }
 
-  async getEventByReferenceId(referenceId: string): Promise<Event | null> {
-    return this.eventRepository.getEventByReferenceId(referenceId);
+  async getEventByReferenceId(referenceId: string, queryRunner?: QueryRunner): Promise<Event | null> {
+    return this.eventRepository.getEventByReferenceId(referenceId, queryRunner);
   }
 
-  async createEvent(data: Prisma.EventCreateInput, tx?: Prisma.TransactionClient): Promise<Event> {
-    return this.eventRepository.createEvent(data, tx);
+  async createEvent(data: Partial<Event>, queryRunner?: QueryRunner): Promise<Event> {
+    return this.eventRepository.createEvent(data, queryRunner);
   }
 
-  async updateEvent(eventId: string, data: Prisma.EventUpdateInput, tx?: Prisma.TransactionClient): Promise<Event> {
-    return this.eventRepository.updateEvent(eventId, data, tx);
+  async updateEvent(eventId: string, data: Partial<Event>, queryRunner?: QueryRunner): Promise<Event> {
+    return this.eventRepository.updateEvent(eventId, data, queryRunner);
   }
 
-  async createOrUpdateEvent(id: string, data: Prisma.EventCreateInput, tx?: Prisma.TransactionClient): Promise<Event> {
-    const eventExists: Event | null = await this.getEventById(id);
+  async createOrUpdateEventById(id: string, data: Partial<Event>, queryRunner?: QueryRunner): Promise<Event> {
+    const eventExists: Event | null = await this.getEventById(id, queryRunner);
 
-    if (eventExists) return this.updateEvent(eventExists.id, data, tx);
+    if (eventExists) return this.updateEvent(eventExists.id, data, queryRunner);
 
-    return this.createEvent(data, tx);
+    return this.createEvent(data, queryRunner);
   }
 }
 

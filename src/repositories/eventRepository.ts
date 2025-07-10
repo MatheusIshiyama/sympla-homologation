@@ -1,70 +1,64 @@
-import { BaseRepository } from '@/repositories/baseRepository';
+import { FindManyOptions, QueryRunner, Repository } from 'typeorm';
 
-import type { Event, Prisma } from '@prisma/client';
-import type { DefaultArgs } from '@prisma/client/runtime/library';
+import { AppDataSource } from '@/database/data-source';
+import { Event } from '@/entities';
 
-export class EventRepository extends BaseRepository {
-  async getAllEvents(findManyArgs: Prisma.EventFindManyArgs<DefaultArgs>, tx?: Prisma.TransactionClient): Promise<Event[]> {
-    return this.getPrismaClient(tx).event.findMany({
-      orderBy: { created_at: 'desc' },
-      ...findManyArgs,
-    });
+export class EventRepository {
+  private repository: Repository<Event>;
+
+  constructor() {
+    this.repository = AppDataSource.getRepository(Event);
+  }
+  async getAllEvents(findManyOptions: FindManyOptions<Event>, queryRunner?: QueryRunner): Promise<Event[]> {
+    if (queryRunner) return queryRunner.manager.find(Event, { order: { createdAt: 'DESC' }, ...findManyOptions });
+
+    return this.repository.find({ order: { createdAt: 'DESC' }, ...findManyOptions });
   }
 
-  async getEventById(id: string, tx?: Prisma.TransactionClient): Promise<Event | null> {
-    return this.getPrismaClient(tx).event.findUnique({
-      where: { id },
-      include: {
-        orders: {
-          orderBy: { created_at: 'desc' },
-        },
-      },
-    });
+  async getEventById(id: string, queryRunner?: QueryRunner): Promise<Event | null> {
+    if (queryRunner) return queryRunner.manager.findOne(Event, { where: { id } });
+
+    return this.repository.findOne({ where: { id } });
   }
 
-  async getEventByReferenceId(referenceId: string, tx?: Prisma.TransactionClient): Promise<Event | null> {
-    return this.getPrismaClient(tx).event.findUnique({
-      where: { reference_id: referenceId },
-      include: {
-        orders: {
-          orderBy: { created_at: 'desc' },
-        },
-        integration: true,
-      },
-    });
+  async getEventByReferenceId(referenceId: string, queryRunner?: QueryRunner): Promise<Event | null> {
+    if (queryRunner) return queryRunner.manager.findOne(Event, { where: { referenceId } });
+
+    return this.repository.findOne({ where: { referenceId } });
   }
 
-  async createEvent(data: Prisma.EventCreateInput, tx?: Prisma.TransactionClient): Promise<Event> {
-    return this.getPrismaClient(tx).event.create({
-      data,
-    });
+  async createEvent(data: Partial<Event>, queryRunner?: QueryRunner): Promise<Event> {
+    if (queryRunner) return queryRunner.manager.save(Event, data);
+
+    return this.repository.save(data);
   }
 
-  async updateEvent(eventId: string, data: Prisma.EventUpdateInput, tx?: Prisma.TransactionClient): Promise<Event> {
-    return this.getPrismaClient(tx).event.update({
-      where: { id: eventId },
-      data,
-    });
+  async updateEvent(eventId: string, data: Partial<Event>, queryRunner?: QueryRunner): Promise<Event> {
+    if (queryRunner) {
+      await queryRunner.manager.update(Event, eventId, data);
+
+      return this.getEventById(eventId, queryRunner) as Promise<Event>;
+    }
+
+    await this.repository.update(eventId, data);
+
+    return this.getEventById(eventId) as Promise<Event>;
   }
 
-  async createOrUpdateEvent(id: string, data: Prisma.EventCreateInput, tx?: Prisma.TransactionClient): Promise<Event> {
-    const eventExists: Event | null = await this.getEventById(id, tx);
+  async createOrUpdateEventById(id: string, data: Partial<Event>, queryRunner?: QueryRunner): Promise<Event> {
+    const eventExists: Event | null = await this.getEventById(id, queryRunner);
 
-    if (eventExists) return this.updateEvent(eventExists.id, data, tx);
+    if (eventExists) return this.updateEvent(eventExists.id, data, queryRunner);
 
-    return this.createEvent(data, tx);
+    return this.createEvent(data, queryRunner);
   }
 
-  async createOrUpdateEventByReferenceId(
-    referenceId: string,
-    data: Prisma.EventCreateInput,
-    tx?: Prisma.TransactionClient,
-  ): Promise<Event> {
-    const eventExists: Event | null = await this.getEventByReferenceId(referenceId, tx);
+  async createOrUpdateEventByReferenceId(referenceId: string, data: Partial<Event>, queryRunner?: QueryRunner): Promise<Event> {
+    const eventExists: Event | null = await this.getEventByReferenceId(referenceId, queryRunner);
 
-    if (eventExists) return this.updateEvent(eventExists.id, data, tx);
+    if (eventExists) return this.updateEvent(eventExists.id, data, queryRunner);
 
-    return this.createEvent(data, tx);
+    return this.createEvent(data, queryRunner);
   }
 }
 

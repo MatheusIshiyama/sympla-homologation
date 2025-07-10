@@ -1,58 +1,69 @@
-import { BaseRepository } from '@/repositories/baseRepository';
+import { FindManyOptions, QueryRunner, Repository } from 'typeorm';
 
-import type { Participant, Prisma } from '@prisma/client';
-import type { DefaultArgs } from '@prisma/client/runtime/library';
+import { AppDataSource } from '@/database/data-source';
+import { Participant } from '@/entities';
 
-export class ParticipantRepository extends BaseRepository {
-  async getAllParticipants(
-    findManyArgs: Prisma.ParticipantFindManyArgs<DefaultArgs>,
-    tx?: Prisma.TransactionClient,
-  ): Promise<Participant[]> {
-    return this.getPrismaClient(tx).participant.findMany({
-      orderBy: { created_at: 'desc' },
-      ...findManyArgs,
-    });
+export class ParticipantRepository {
+  private repository: Repository<Participant>;
+
+  constructor() {
+    this.repository = AppDataSource.getRepository(Participant);
   }
 
-  async getParticipantById(id: string, tx?: Prisma.TransactionClient): Promise<Participant | null> {
-    return this.getPrismaClient(tx).participant.findUnique({ where: { id } });
+  async getAllParticipants(findManyOptions: FindManyOptions<Participant>, queryRunner?: QueryRunner): Promise<Participant[]> {
+    if (queryRunner) return queryRunner.manager.find(Participant, { order: { createdAt: 'DESC' }, ...findManyOptions });
+
+    return this.repository.find({ order: { createdAt: 'DESC' }, ...findManyOptions });
   }
 
-  async getParticipantByReferenceId(referenceId: string, tx?: Prisma.TransactionClient): Promise<Participant | null> {
-    return this.getPrismaClient(tx).participant.findUnique({ where: { reference_id: referenceId } });
+  async getParticipantById(id: string, queryRunner?: QueryRunner): Promise<Participant | null> {
+    if (queryRunner) return queryRunner.manager.findOne(Participant, { where: { id } });
+
+    return this.repository.findOne({ where: { id } });
   }
 
-  async createParticipant(participant: Prisma.ParticipantCreateInput, tx?: Prisma.TransactionClient): Promise<Participant> {
-    return this.getPrismaClient(tx).participant.create({
-      data: participant,
-    });
+  async getParticipantByReferenceId(referenceId: string, queryRunner?: QueryRunner): Promise<Participant | null> {
+    if (queryRunner) return queryRunner.manager.findOne(Participant, { where: { referenceId } });
+
+    return this.repository.findOne({ where: { referenceId } });
   }
 
-  async updateParticipant(participantId: string, data: Prisma.ParticipantUpdateInput, tx?: Prisma.TransactionClient): Promise<Participant> {
-    return this.getPrismaClient(tx).participant.update({
-      where: { id: participantId },
-      data,
-    });
+  async createParticipant(participant: Partial<Participant>, queryRunner?: QueryRunner): Promise<Participant> {
+    if (queryRunner) return queryRunner.manager.save(Participant, participant);
+
+    return this.repository.save(participant);
   }
 
-  async createOrUpdateParticipant(id: string, data: Prisma.ParticipantCreateInput, tx?: Prisma.TransactionClient): Promise<Participant> {
-    const participantExists: Participant | null = await this.getParticipantById(id, tx);
+  async updateParticipant(participantId: string, data: Partial<Participant>, queryRunner?: QueryRunner): Promise<Participant> {
+    if (queryRunner) {
+      await queryRunner.manager.update(Participant, participantId, data);
 
-    if (participantExists) return this.updateParticipant(participantExists.id, data, tx);
+      return this.getParticipantById(participantId, queryRunner) as Promise<Participant>;
+    }
 
-    return this.createParticipant(data, tx);
+    await this.repository.update(participantId, data);
+
+    return this.getParticipantById(participantId) as Promise<Participant>;
+  }
+
+  async createOrUpdateParticipantById(id: string, data: Partial<Participant>, queryRunner?: QueryRunner): Promise<Participant> {
+    const participantExists: Participant | null = await this.getParticipantById(id, queryRunner);
+
+    if (participantExists) return this.updateParticipant(participantExists.id, data, queryRunner);
+
+    return this.createParticipant(data, queryRunner);
   }
 
   async createOrUpdateParticipantByReferenceId(
     referenceId: string,
-    data: Prisma.ParticipantCreateInput,
-    tx?: Prisma.TransactionClient,
+    data: Partial<Participant>,
+    queryRunner?: QueryRunner,
   ): Promise<Participant> {
-    const participantExists: Participant | null = await this.getParticipantByReferenceId(referenceId, tx);
+    const participantExists: Participant | null = await this.getParticipantByReferenceId(referenceId, queryRunner);
 
-    if (participantExists) return this.updateParticipant(participantExists.id, data, tx);
+    if (participantExists) return this.updateParticipant(participantExists.id, data, queryRunner);
 
-    return this.createParticipant(data, tx);
+    return this.createParticipant(data, queryRunner);
   }
 }
 
