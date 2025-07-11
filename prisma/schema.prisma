@@ -10,3 +10,200 @@ datasource db {
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
+
+model Address {
+  id           String   @id @default(cuid())
+  event_id     String   @unique
+  name         String
+  address      String?
+  address_num  String?
+  address_alt  String?
+  neighborhood String?
+  city         String
+  state        String?
+  zip_code     String?
+  country      String?
+  lon          Float?
+  lat          Float?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  event Event @relation(fields: [event_id], references: [id])
+
+  @@map("Addresses")
+}
+
+model Event {
+  id               String   @id @default(cuid())
+  user_id          String
+  integration_id   String
+  reference_id     String   @unique
+  name             String
+  detail           String?
+  active           Boolean  @default(false)
+  private_event    Boolean  @default(false)
+  published        Boolean  @default(false)
+  cancelled        Boolean  @default(false)
+  image            String?
+  url              String?
+  start_date       DateTime
+  end_date         DateTime
+  category_prim    String?
+  category_sec     String?
+  last_update_date DateTime @default("1970-01-01T00:00:00.000Z")
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  user        User        @relation(fields: [user_id], references: [id])
+  integration Integration @relation(fields: [integration_id], references: [id])
+
+  address Address?
+  host    Host?
+
+  orders Order[]
+
+  @@map("Events")
+}
+
+model Host {
+  id          String   @id @default(cuid())
+  event_id    String   @unique
+  name        String
+  description String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  event Event @relation(fields: [event_id], references: [id])
+
+  @@map("Hosts")
+}
+
+model Integration {
+  id      String @id @default(cuid())
+  user_id String
+  name    String
+  token   String
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user   User    @relation(fields: [user_id], references: [id])
+  events Event[]
+
+  @@map("Integrations")
+}
+
+model Order {
+  id                     String    @id @default(cuid())
+  reference_id           String    @unique
+  event_id               String
+  order_date             DateTime
+  order_status           String
+  updated_date           DateTime?
+  approved_date          DateTime?
+  transaction_type       String?
+  order_total_sale_price Float?
+  order_total_net_value  Float?
+  buyer_first_name       String?
+  buyer_last_name        String?
+  buyer_email            String?
+  utm_id                 String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  event        Event         @relation(fields: [event_id], references: [id])
+  participants Participant[]
+  utm          UTM?
+
+  @@map("Orders")
+}
+
+model Participant {
+  id                  String    @id @default(cuid())
+  reference_id        String    @unique
+  order_id            String
+  order_status        String
+  order_date          DateTime
+  order_updated_date  DateTime
+  order_approved_date DateTime?
+  order_discount      String?
+  first_name          String
+  last_name           String
+  email               String
+  ticket_number       String
+  ticket_num_qr_code  String
+  ticket_name         String?
+  sector_name         String?
+  marked_place_name   String?
+  access_information  String?
+  pdv_user            String?
+  ticket_sale_price   Float?
+  check_in            Boolean   @default(false)
+  check_in_date       DateTime?
+  ticket_created_at   DateTime?
+  ticket_updated_at   DateTime?
+  presentation_id     String?
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+
+  order Order @relation(fields: [order_id], references: [id])
+
+  @@map("Participants")
+}
+
+model Permission {
+  id         Int      @id @default(autoincrement())
+  name       String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  roles Role[]
+
+  @@map("Permissions")
+}
+
+model Role {
+  id         Int      @id @default(autoincrement())
+  name       String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  users       User[]
+  permissions Permission[]
+
+  @@map("Roles")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  reference_id String   @unique
+  role_id      Int
+  name         String?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  role         Role          @relation(fields: [role_id], references: [id])
+  events       Event[]
+  integrations Integration[]
+
+  @@map("Users")
+}
+
+model UTM {
+  id           String   @id @default(cuid())
+  order_id     String   @unique
+  utm_source   String?
+  utm_medium   String?
+  utm_campaign String?
+  utm_term     String?
+  utm_content  String?
+  user_agent   String?
+  referrer     String?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  order Order @relation(fields: [order_id], references: [id])
+
+  @@map("UTMs")
+}

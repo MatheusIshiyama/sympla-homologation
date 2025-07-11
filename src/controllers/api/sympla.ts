@@ -36,7 +36,7 @@ export class SymplaController {
 
   async getOrdersByEventReferenceId(eventReferenceId: string, page: number = 1): Promise<SymplaOrderResponse> {
     try {
-      const symplaApiClient = await this.getSymplaApiClientByEventReferenceId(eventReferenceId);
+      const symplaApiClient: SymplaApiClient = await this.getSymplaApiClientByEventReferenceId(eventReferenceId);
 
       const orders: SymplaOrderResponse = await symplaApiClient.getOrders(eventReferenceId, page);
 
@@ -49,7 +49,7 @@ export class SymplaController {
 
   async getOrderParticipants(eventReferenceId: string, orderId: string): Promise<SymplaParticipantResponse> {
     try {
-      const symplaApiClient = await this.getSymplaApiClientByEventReferenceId(eventReferenceId);
+      const symplaApiClient: SymplaApiClient = await this.getSymplaApiClientByEventReferenceId(eventReferenceId);
 
       const participants: SymplaParticipantResponse = await symplaApiClient.getOrderParticipants(eventReferenceId, orderId);
 
@@ -77,7 +77,7 @@ export class SymplaController {
 
   async fetchAllOrdersFromEvent(eventReferenceId: string, prevResults: SymplaOrder[] = [], page: number = 1): Promise<SymplaOrder[]> {
     try {
-      const symplaApiClient = await this.getSymplaApiClientByEventReferenceId(eventReferenceId);
+      const symplaApiClient: SymplaApiClient = await this.getSymplaApiClientByEventReferenceId(eventReferenceId);
 
       const response: SymplaOrderResponse = await symplaApiClient.getOrders(eventReferenceId, page);
       const results: SymplaOrder[] = [...prevResults, ...response.data];
