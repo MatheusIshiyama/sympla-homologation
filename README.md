@@ -21,40 +21,38 @@ A Node.js API service for integrating with Sympla's event management platform. T
 
 1. **Clone the repository**
 
-   ```bash
-   git clone https://github.com/MatheusIshiyama/sympla-homologation.git
-   cd sympla-homologation
-   ```
+```bash
+git clone https://github.com/MatheusIshiyama/sympla-homologation.git
+cd sympla-homologation
+```
 
 2. **Install dependencies**
 
-   ```bash
-   pnpm install
-   ```
+```bash
+pnpm install
+```
 
 3. **Environment Setup**
    Create a `.env` file in the root directory with the following variables:
 
-   ```env
-   # Database
-   DATABASE_URL="postgresql://username:password@localhost:5432/sympla_homologation"
-   DIRECT_URL="postgresql://username:password@localhost:5432/sympla_homologation"
+```env
+# Database
+DATABASE_URL="postgresql://username:password@localhost:5432/sympla_homologation"
+DIRECT_URL="postgresql://username:password@localhost:5432/sympla_homologation"
 
-   # Server
-   PORT=3000
-   ```
-
-````
+# Server
+PORT=3000
+```
 
 4. **Database Setup**
 
- ```bash
- # Generate Prisma client
- pnpm prisma:generate
+```bash
+# Generate Prisma client
+pnpm prisma:generate
 
- # Run database migrations
- pnpm prisma:migrate
-````
+# Run database migrations
+pnpm prisma:migrate
+```
 
 ## 🚀 Usage
 
